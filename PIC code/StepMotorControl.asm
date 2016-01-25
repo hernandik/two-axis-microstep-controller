@@ -28,8 +28,11 @@
 ; * LB1946 (Eposn C60 driver from aleggro) work nice
 ;		you should set outside via hardware a bias voltage to this chip
 ;		to allow low current mode.
+;		you can set the decaying mode, changing the table of data for this chip
+; * A2919SLB allegro microstep chip (not fully implemented)
+*
 ;	Futher we will implement control via PWM pin to allow fine tunning
-;		of current for motor
+;		of current for motors
 ;
 ; Due the tight timming, the top step speed is of 7KHz steps
 ;   * Sum routines take a lot of processing, due the lack of adc (add with
