@@ -1,4 +1,4 @@
-# microstep-controller for MMicrochip PIC
+# microstep-controller for Microchip PIC
 The present project is a controller software for PIC 16F877(a) with support to:
 * two axis micro step (up to three axis, with minor changes)
 * PWM out signal (for use as main current control)
