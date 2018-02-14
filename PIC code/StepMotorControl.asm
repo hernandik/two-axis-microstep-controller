@@ -5,9 +5,9 @@
 ;	This code was written in 2009/2010
 ;
 ;
-; ABOUT the software
+; ABOUT
 ;
-; Receive commands as simple binary data by serial port
+; This impl. receive commands as simple binary data by serial port
 ;	This program take care of axis interpolation
 ; The data input is based
 ;	* in axis deltas
@@ -15,31 +15,33 @@
 ; axis deltas are given in fixed integer math, in format:
 ;	xx:xx:xx:ff:ff:ff
 ;		where
-;			xx is the integer part (not present in data in, only inside the counters of program)
+;			xx is the integer part. Is not send, presented here only for
+;              explanation. Created inside this program to count points
 ;			ff the fractional part
+;              (this information is send to the current code)
 ;
-; When sending commands, check if the buffer isn't full.
-;	There are a command for this
+; When receiving commands a check if the buffer isn't full is made and a reply is made
+;
 ; To better learn how to use this program, and send commands
 ;	look at main loop
-; 
-; Both the below drivers are controlled with microstep
+;
+; The below drivers are controlled with microstep
 ; * LM18245 never tested, but he code is available
-; * LB1946 (Eposn C60 driver from aleggro) work nice
+; * LB1946 (Epson C60 driver from Aleggro) work nice
 ;		you should set outside via hardware a bias voltage to this chip
 ;		to allow low current mode.
 ;		you can set the decaying mode, changing the table of data for this chip
 ; * A2919SLB allegro microstep chip (not fully implemented)
-*
+;
 ;	Futher we will implement control via PWM pin to allow fine tunning
 ;		of current for motors
 ;
-; Due the tight timming, the top step speed is of 7KHz steps
-;   * Sum routines take a lot of processing, due the lack of adc (add with
-;	input/output(I can remember) carry) inside the 16f877
-;   * Serialization routine for LB1946 - it use 11 bit data. This caused
-;	the need of implement a software routine for this task, as SPI
-;	or i2c dont use this weird data length
+; Due the tight timming, the top speed stepping is of 7KHz steps, because:
+;   * Sum routines take a lot of processing, due the lack of adc (add with carry
+;	  inside the 16f877
+;   * Serialization routine for LB1946 use 11 bit data. This caused
+;     the need of implement a software routine for this task, as SPI
+;     or i2c dont use this weird data length
 ;   I do not test with the LM chip, but it should allow higher frequencies and
 ;		this could be better
 ;	Enjoy the software!
@@ -61,17 +63,27 @@
 ; Recebe comandos através da PORTA SERIAL a 9600,n,8,1
 ;	Comandos implementados
 ;		são todos baseados em simples caracteres seguidos de alguma sequencia auxiliar:
-;		'S' - STATUS geral dos contadores XYZ, CONTADOR, TIMERINT 
-;			Retorna uma string contendo o status processado eo caractere final 'K' finalizando transmissao
-;		's' - status do buffer de entrada retorna 2 bytes com o status do PLOTTER e do FIFO
-;			Retorna 3 bytes, sendo 2 STATUS e 1 de finalização de envio dados 'K'
-;		'lxxxcyyyczzzcDDD' - executa desenho linha com coef angulares xxx/dD yyy/dD e zzz/dD
-;		'LxxxcyyyczzzcDDD' - executa desenho linha com coef angulares xxx/dD yyy/dD e zzz/dD; guarda dados no FIFO Circular
-;			e comprimento DDD - 24 bits para cada conj
-;			AMBAS as rotinas esperam receber 15 bytes de dados; ao termino enviam um K confirmando o recebimento
-;		'Tt' - onde t é um valor de 1 a 255 que controle a INT do sistema para controle da frequencia
-;			Retorna um K quando transmissao termina
 
+;		'S' - STATUS geral dos contadores XYZ, CONTADOR, TIMERINT 
+;		Retorna uma string contendo o status processado eo caractere final 'K' finalizando transmissao
+;
+		's' - status do buffer de entrada retorna 3 bytes com o status do PLOTTER e do FIFO e 'K'
+;			Formato dos status é byte PLOTTER e byte FIFO
+;		Retorna 3 bytes, sendo 2 STATUS e 1 de finalização de envio dados 'K'
+;
+;		'lxxxcyyyczzzcDDD' - executa desenho linha com coef angulares xxx/dD yyy/dD e zzz/dD
+;			Execucao imediata
+;		'LxxxcyyyczzzcDDD' - executa desenho linha com coef angulares xxx/dD yyy/dD e zzz/dD;
+;			guarda dados no FIFO Circular
+;			e comprimento DDD - 24 bits para cada conj
+;	
+;		AMBAS as rotinas esperam receber 15 bytes de dados;
+;       Retornam um 'K' confirmando o recebimento
+;
+;		'Tt' - onde t é um valor de 1 a 255 que controle a interrupção do sistema
+;          para controle da frequencia
+;		Retorna um K quando transmissao termina
+;
 ; CONTADORES INTERNOS DO MICRONTROLADOR - USO
 ; TIMER0 controla INT geral de 7Khz
 ; TIMER1 para contar quantas instruções sao executadas
@@ -214,27 +226,27 @@ carry 		res .01
 ;*****************************************
 ; Rotinas de debug
 ledTeste01 	res .01
-timerL	res .01
-timerH res .01
+timerL		res .01
+timerH 		res .01
 
 ;***********************************
 ; Rotina envio bits para motor passo
 ; 		para controladores EPSON
-sHIGH res .01
-sLOW res .01 ; bytes a serializar somente os primeiros 11 bits
-serCount res .01
+sHIGH 			res .01
+sLOW 			res .01 ; bytes a serializar somente os primeiros 11 bits
+serCount 		res .01
 
 ;************************************
 ; Rotina KeyScan
-debOnLine res 01
+debOnLine 		res 01
 
 ;**********************************
 ; Variaveis da rotina para enviar 3 bytes para a saida em hexdecimal
 ; Put3BYTE2HEX
 ; endereço da variavel de origem H:L que contem os bytes a serem exibidos
-tmpLadr 	res 01
-tmpHadr 	res 01
-putCount 	res 01
+tmpLadr 		res 01
+tmpHadr 		res 01
+putCount 		res 01
 nBytes2Send 	res 01
 
 ; Rotinas de exibição
@@ -249,50 +261,48 @@ memFIFO		UDATA 0xA0
 ;*****************************************
 ; Rotina de controle da memoria circular - FIFO
 
-FIFO_N_REG equ .4
-BYTES_PER_FIFO equ .15
-FIFO_RX_BUF_SIZE equ BYTES_PER_FIFO * FIFO_N_REG
+FIFO_N_REG 			equ .4
+BYTES_PER_FIFO 		equ .15
+FIFO_RX_BUF_SIZE 	equ BYTES_PER_FIFO * FIFO_N_REG
 
-FIFOBufEmpty equ 0x0
-FIFOBufFul equ 0x1
-FIFOBufOF equ 0x2
+FIFOBufEmpty 	equ 0x0
+FIFOBufFul 		equ 0x1
+FIFOBufOF 		equ 0x2
 
-vFIFOBuffer res FIFO_RX_BUF_SIZE
-vFIFOStatus res .01
-vFIFODataCnt res .01
-vFIFOWrPtr res .01
-vFIFORdPtr res .01
-
+vFIFOBuffer 	res FIFO_RX_BUF_SIZE
+vFIFOStatus 	res .01
+vFIFODataCnt 	res .01
+vFIFOWrPtr 		res .01
+vFIFORdPtr 		res .01
 
 
 ;************************************
 ; Váriaveis de controle dos servos
-vServoClockCnt res 01	; contador continuo - reiniciando ao alcançar SERVO_MAX_CNT
-vServoLmt res .4 ; posição de cada servo
+vServoClockCnt 	res 01	; contador continuo - reiniciando ao alcançar SERVO_MAX_CNT
+vServoLmt 		res .4 ; posição de cada servo
 
 ;************************************
 ; Variaveis da rotinha de comportamentos - BEHAVIOR
 ; Reflexos do sistema a eventos da porta D
-beh0 res 01	; UP
-beh1 res 01 ; DOWN
-beh2 res 01 ; LEFT
-beh3 res 01 ; RGHT
+beh0 	res 01	; UP
+beh1 	res 01 ; DOWN
+beh2 	res 01 ; LEFT
+beh3 	res 01 ; RGHT
 
 ;************************************
 ; Area de memoria com dados do ADC
 memADC	UDATA 0x110
 
-vADCPort res .01
-vADCWrPtr res .01
-vADCRdPtr res .01
+vADCPort 	res .01
+vADCWrPtr 	res .01
+vADCRdPtr 	res .01
 vADCDataCnt res .01
-vADCStatus res .01
-
-adcBuffer res .80
-
+vADCStatus 	res .01
+adcBuffer 	res .80
 
 ;*************************************
 ; AREA MEMORIA COMPARTILHADA
+;    Utilizada pelas rotinas de interrupção para salvar contexto
 UARTTstShr UDATA_SHR
 
 W_TEMP			RES 01 ; salva de contexto, para ser acessado em qualquer rotina, USART maestro
@@ -336,7 +346,7 @@ SendCRLF MACRO
 	movlw 0x0a
 	call PutChar
 	endm
-	
+
 ;**********************************************
 STARThere       CODE    0x00
 		goto main
@@ -368,6 +378,8 @@ IntVectorInterupt CODE    0x05
 
 	btfss INTCON, T0IF	; verifica se ocorreu tambem/ou uma interrupção do timer
 	goto ExitInt
+
+	; Caso tenha ocorrido uma INT do timer interno de 7khz(alteravel)
 
 Async_ISR
 	;movlw TIMER_VAL; non disruptive timer reload
@@ -2236,7 +2248,7 @@ ExecBehavior
 ;*****************************************
 ; ROTINA DE GERAÇÂO DE SINAIS PWM
 ;************************************
-;vServoClockCnt res 01
+;vServoClockCnt res 01 ; contador continuo - reiniciando ao alcançar SERVO_MAX_CNT
 ;vServoLmt res .4 ; posição de cada servo
 
 SERVO_MAX_CNT equ .100
@@ -2248,6 +2260,10 @@ SERVO_MAX_CNT equ .100
 
 processaPWMFunc
 	; seleciona area de memoria onde estao gravados os registros de PWM
+	; Usamos uma variavel como contador que é incrementada a cada tick
+	;    da interrupcao principal
+	;  Este contador é usado como base para controlar a largura do pulso do PWM
+
 	banksel vServoClockCnt
 	incf vServoClockCnt,f
 	movlw SERVO_MAX_CNT
