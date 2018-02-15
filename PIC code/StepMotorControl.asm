@@ -125,13 +125,13 @@ PORTADIRECAO equ PORTE ; alinhar porta
 ; 		BIT1 - DADOS SISTEMA SERIALIZAÇÃO
 ; 		BIT2 - BIT CONTROLE ENVIO DADOS SERIAIS MOTORA
 ;		BIT3 - BIT CONTROLE ENVIO DADOS SERIAIS MOTORB
-;		BIT4 - CONTROLE SERVOMOTOR1
-; 		BIT5 - CONTROLE SERVOMOTOR2
+;		BIT4 - CONTROLE SERVOMOTOR 1 (PWM)
+; 		BIT5 - CONTROLE SERVOMOTOR 2 (PWM)
 
 ; PORTB
 ;		BIT0 - Botao externo para seleção de OnLine
-;		BIT1 - CONTROLE SERVO MOTOR3
-;		BIT2 - CONTROLE SERVO MOTOR4
+;		BIT1 - CONTROLE SERVO MOTOR 3 (PWM)
+;		BIT2 - CONTROLE SERVO MOTOR 4 (PWM)
 ;		BIT3 - PGM - não possivel ser utilizado
 ;		BIT4 - Botao para avanço de X
 ;		BIT5 - Botao para retrocesso de X
@@ -187,8 +187,9 @@ MOTORZ res 01
 ; status do buffer de linha
 vPLOTStatus res 01;
 
-PLOTDrawing equ 0x0
-PLOTOnLine equ 0x1
+PLOTDrawingBit equ 0x0
+PLOTOnLineBit equ 0x1
+
 ; cANG possui o coeficiente angular a ser incrementado a cada eixo em cada passagem
 ; CONTADOR cada eixo  para registar o movimento dos eixos, fixed math
 	; (6 bytes) em HEX 0xx 1xx 2xx:3xx 4xx 5xx ; o primeiro bit MSB é o sinal q indica a direção
@@ -265,9 +266,9 @@ FIFO_N_REG 			equ .4
 BYTES_PER_FIFO 		equ .15
 FIFO_RX_BUF_SIZE 	equ BYTES_PER_FIFO * FIFO_N_REG
 
-FIFOBufEmpty 	equ 0x0
-FIFOBufFul 		equ 0x1
-FIFOBufOF 		equ 0x2
+FIFOBufEmptyBit 	equ 0x0
+FIFOBufFulBit 		equ 0x1
+FIFOBufOFBit 		equ 0x2
 
 vFIFOBuffer 	res FIFO_RX_BUF_SIZE
 vFIFOStatus 	res .01
@@ -403,17 +404,17 @@ Async_ISR
 	banksel vPLOTStatus
 
 	; Verifica se tem alguma linha sendo desenhada no momento
-	btfsc vPLOTStatus, PLOTDrawing
+	btfsc vPLOTStatus, PLOTDrawingBit
 	goto continuaPrograma1	; existe uma linha em andamento, nao faz nada na rotina
 	; Nao exite nenhuma linha em andamento
 
-	; Verificar status do flag PLOTOnLine
+	; Verificar status do flag PLOTOnLineBit
 		; 1 online
 		; 0 offline
-		; Depois do PLOTDrawing para permitir que uma possivel
+		; Depois do PLOTDrawingBit para permitir que uma possivel
 		; 	linha termine seu desenho antes de interromper futuros
 		;	carregamentos de dados para proxima linha nos regs
-	btfss vPLOTStatus, PLOTOnLine
+	btfss vPLOTStatus, PLOTOnLineBit
 	goto ExitInt
 
 ; UTILIZADO PARA DEBUG
@@ -437,7 +438,7 @@ fimLed3
 	btfss   STATUS,Z
 	goto 	TransferRecdDataToExec		; Exitem dados pendentes
 	
-	bsf     vFIFOStatus,FIFOBufEmpty   	; Nao existem dados pendentes
+	bsf     vFIFOStatus,FIFOBufEmptyBit   	; Nao existem dados pendentes
 	goto ExitInt						; encerra INT
 
 TransferRecdDataToExec	; transfere os 15 bytes de dados a partir do endereço informado por
@@ -508,14 +509,14 @@ TransferRecdDataToExec	; transfere os 15 bytes de dados a partir do endereço inf
 	decf vFIFODataCnt,F
 	movf vFIFODataCnt,W
 	btfsc STATUS,Z
-	bsf vFIFOStatus,FIFOBufEmpty	; empty = 1 informando que buffer esta vazio
+	bsf vFIFOStatus,FIFOBufEmptyBit	; empty = 1 informando que buffer esta vazio
 
-	bcf vFIFOStatus, FIFOBufFul ; tem espaço pra mais dados agora
+	bcf vFIFOStatus, FIFOBufFulBit ; tem espaço pra mais dados agora
 
 	; Ajusta PLOTSTATUS para começar a desenhar
 	banksel vPLOTStatus
 	bankisel vPLOTStatus
-	bsf vPLOTStatus, PLOTDrawing ; agora tem uma linha em andamento
+	bsf vPLOTStatus, PLOTDrawingBit ; agora tem uma linha em andamento
 
 ; Limpa area da memoria que contem os contadores de cada motor
 ; 	AVALIAR SE ESTA ROTINA É REALMENTE NECESSARIA, SE MANTER OS DADOS NÃO É MAIS EFICIENTE.
@@ -534,6 +535,7 @@ NEXTBYTE2	clrf INDF
 
 ; Caso positivo, continue desenhando a linha ou Começe a desenhar
 
+;###########################################################################
 ; No processamento da linha
 ; 	somar a cada vertice de cada motor o incremento
 ;	correspondente de 24 bits pre definido
@@ -542,10 +544,10 @@ NEXTBYTE2	clrf INDF
 ;	CONTADORZ = cANGZ + CONTADORZ
 
 continuaPrograma1
-	; addA contem endereço numero A (6 bytes (3)MSB.(3)LSB )
-	; addB contem endereço numero B (3 bytes .(3)LSB )
+	; addA contem endereço numero A (6 bytes (3)MSB.(3)LSB ) xx:xx:xx:ff:ff:ff
+	; addB contem endereço numero B (3 bytes .(3)LSB ) 00:00:00:ff:ff:ff
 	; resulatado é addA=addA+addB
-	; carry passando pela unidade é registrado em carrySoma
+	; carry passando pela unidade é registrado em 'somaCarry'
 	;	- necessario para estabelecer o passo
 	movlw 0x0
 	banksel somaCarry
@@ -575,7 +577,6 @@ continuaPrograma1
 	banksel somaCarry
 	movf somaCarry,W
 	movwf carryY
-
 
 ;*************************************	
 ; verifica se é necessario passo em X
@@ -660,7 +661,6 @@ proxY
 
 	proxZ
 
-
 ; decrementa contador de ticks
 	banksel nPassos
 	movlw 0x1
@@ -671,7 +671,7 @@ proxY
 	subwf nPassos, F
 	btfsc STATUS,C ; ocorreu borrow
 	goto linhaAindaEmAndamento
-	bcf vPLOTStatus,PLOTDrawing ; caso termine a linha, zera contador    ;85
+	bcf vPLOTStatus,PLOTDrawingBit ; caso termine a linha, zera contador    ;85
 
 
 linhaAindaEmAndamento
@@ -765,8 +765,8 @@ NEXTBYTE_BANK2	clrf INDF
 	banksel VARIAVEL_TIMER_VAL
 	movwf VARIAVEL_TIMER_VAL
 	
-; Configura e deixa em HOLD o TIMER1 para controlar
-; a contagem de instruções da rotina de INT 1:1
+	; Configura e deixa em HOLD o TIMER1 para controlar
+	; a contagem de instruções da rotina de INT 1:1
 	banksel T1CON
 	movlw b'00000000'
 	movwf T1CON
@@ -776,13 +776,13 @@ NEXTBYTE_BANK2	clrf INDF
 	clrf TMR1L
 	clrf TMR1H
 
-; Configurar TIMER2 para interrupção do ADC
+	; Configurar TIMER2 para interrupção do ADC
 
-; Inicializa porta serial 9600,n,8,1
+	; Inicializa porta serial 9600,n,8,1
 	pagesel UARTIntInit
     call    UARTIntInit
 
-; Inicializa variaveis do FIFO CIRCULAR
+	; Inicializa variaveis do FIFO CIRCULAR
 	banksel vFIFOStatus
 	clrf vFIFOStatus
 	clrf vFIFODataCnt
@@ -792,7 +792,7 @@ NEXTBYTE_BANK2	clrf INDF
 	; Inicializa variaveis plotter
 	banksel vPLOTStatus
 	clrf vPLOTStatus
-	bsf  vPLOTStatus, PLOTOnLine ; deixa em ONLINE
+	bsf  vPLOTStatus, PLOTOnLineBit ; deixa em ONLINE
 
 	pagesel Loop
 	
@@ -890,7 +890,7 @@ CAPTURA_PORTD
 	goto Loop
 
 ;********************************************
-; Altera contador PWM de um pinoe specifico - 4 disponiveis
+; Altera contador PWM de um pino especifico - 4 disponiveis
 ; Sobre 6.5Khz/60hz - 65hz - 150uS aprox entre passos
 ;vServoLmt res .4 ; posição de cada servo
 ALTERA_PWM
@@ -991,7 +991,7 @@ NEXTBYTE3	clrf INDF
 	goto NEXTBYTE3
 
 	banksel vPLOTStatus
-	bsf vPLOTStatus, PLOTDrawing ; agora tem uma linha em andamento
+	bsf vPLOTStatus, PLOTDrawingBit ; agora tem uma linha em andamento
 
 	call PutOK ; manda apenas um K para informar que completou recebimento da linha
 
@@ -1001,8 +1001,8 @@ NEXTBYTE3	clrf INDF
 ; 	definem comprimento do vetor X(3)+dir(1) Y(3)+dir(1) Z(3)+dir(1) e nPassos(3)
 ; Grava na região apontada por vFIFOWrPtr - implementa um FIFO Circular
 ;		A rotina da Interrupção retira dados deste FIFO CIRCULAR
-; Caso o FIFO encha, ativa flag FIFOBufFul
-; Caso chegue mais um dado alem do limite FIFO, ativa o flag FIFOBufOF,
+; Caso o FIFO encha, ativa flag FIFOBufFulBit
+; Caso chegue mais um dado alem do limite FIFO, ativa o flag FIFOBufOFBit,
 ;		e sobreescreve o proximo dado
 LINHA	
 	banksel vFIFOWrPtr		; copia valor para a memoria
@@ -1081,23 +1081,23 @@ LINHA
 	btfsc STATUS,Z
 	clrf vFIFOWrPtr	; sim, zera ponteiro escrita
 
-	btfsc vFIFOStatus,FIFOBufFul	; Já estava cheio?
+	btfsc vFIFOStatus,FIFOBufFulBit	; Já estava cheio?
 	goto rFIFOBufFull	; buffer cheio, ativa OVERFLOW e
 						; evita que Cnt ultrapasse limite contagem
 	
-	bcf vFIFOStatus, FIFOBufEmpty	; buffer nao está mais vazio
-	incf vFIFODataCnt,F	; numero de bytes chegou ao limite? ativa flag de FIFOBufFul
+	bcf vFIFOStatus, FIFOBufEmptyBit	; buffer nao está mais vazio
+	incf vFIFODataCnt,F	; numero de bytes chegou ao limite? ativa flag de FIFOBufFulBit
 	movlw FIFO_N_REG
 	xorwf vFIFODataCnt,W
 	btfsc STATUS,Z
-	bsf vFIFOStatus,FIFOBufFul
+	bsf vFIFOStatus,FIFOBufFulBit
 
 	goto rFIFOContinue
 
 rFIFOBufFull
-	bsf vFIFOStatus,FIFOBufOF		; marca o Overflow do buffer!, dados sobre escritos
-	; nao incrementa FIFO ;incf vFIFODataCnt	; numero de bytes chegou ao limite? ativa flag de FIFOBufFul
-	bcf vFIFOStatus, FIFOBufEmpty
+	bsf vFIFOStatus,FIFOBufOFBit		; marca o Overflow do buffer!, dados sobre escritos
+	; nao incrementa FIFO ;incf vFIFODataCnt	; numero de bytes chegou ao limite? ativa flag de FIFOBufFulBit
+	bcf vFIFOStatus, FIFOBufEmptyBit
 
 rFIFOContinue
 	; depois de receber o byte, ativa desenho da linha
@@ -1369,7 +1369,7 @@ fim32
 		BSF somaCarry,0x0; ajusta flag apenas
 fim33
 		decf FSR,F
-	
+
 ;*******
 ; BYTE 2
 		; adiciona carry
@@ -1429,9 +1429,9 @@ fim13
 STATUS_SISTEMA	nop
 	; envia FULL(F) ou READY(R) para status atual - desenhando ou livre
 	banksel vPLOTStatus
-	btfsc vPLOTStatus,PLOTDrawing
+	btfsc vPLOTStatus,PLOTDrawingBit
 	call PutFULL
-	btfss vPLOTStatus,PLOTDrawing
+	btfss vPLOTStatus,PLOTDrawingBit
 	call PutREADY
 
 	banksel tmpLadr	; exibe str1
@@ -1531,7 +1531,7 @@ printS
 	
 	movf tmpChar,W
 	call PutChar	; exibe o caractere
-	
+
 	; incrementa posicões da memoria
 	banksel tmpLadr
 	incfsz tmpLadr,F
@@ -2062,30 +2062,33 @@ SerializarViaSSP	nop
 ;		BIT6 - Botao para avanço de Y
 ;		BIT7 - Botao para retrocesso de Y
 
-ONLINEPORT equ PORTB
-ONLINEBIT equ 0x0
+ONLINEPORT 		equ PORTB
+ONLINEBIT  		equ 0x0
 
-DIRECTIONPORT equ PORTB
-UPBIT equ 0x4
-DOBIT equ 0x5
-LEBIT equ 0x6
-RIBIT equ 0x7
+#define ONLINE  PORTB,0x0
 
-VELTESTE equ 0x40FFFF ; meia velocidade por CLOCK
-NPASSOS equ .5000	; 3000 passos
-TIME2DEBOUNCE equ 0x60
+DIRECTIONPORT 	equ PORTB
+UPBIT 			equ 0x4
+DOBIT 			equ 0x5
+LEBIT 			equ 0x6
+RIBIT 			equ 0x7
+
+VELTESTE 		equ 0x40FFFF ; meia velocidade por CLOCK
+NPASSOS 		equ .5000	; 3000 passos
+TIME2DEBOUNCE 	equ 0x60
 
 KeyScan	; todas as portas estao no primeiro banco
 	banksel PORTB
-	btfsc ONLINEPORT, ONLINEBIT
+	btfsc ONLINE ; SKIP if online buton is off
 	goto tglOnLineStatus
 
 	; executa movimentação adicional
 	; 	apenas se estiver no modo OFFLINE e
-	btfsc vPLOTStatus, PLOTOnLine
+	btfsc vPLOTStatus, PLOTOnLineBit
 	goto FimKeyScan
-	; nao houver nenhuma linha ativa ocorrendo PLOTDrawing != 1
-	btfsc vPLOTStatus, PLOTDrawing
+
+	; nao houver nenhuma linha ativa ocorrendo PLOTDrawingBit != 1
+	btfsc vPLOTStatus, PLOTDrawingBit
 	goto FimKeyScan
 
 	btfsc DIRECTIONPORT, UPBIT
@@ -2108,13 +2111,14 @@ tglOnLineStatus
 	incf debOnLine,F
 	movlw TIME2DEBOUNCE
 	xorwf debOnLine,W
-	btfss STATUS,Z
-	goto FimKeyScan
+	btfss STATUS,Z # contador debounce igual a contador tecla?
+	goto FimKeyScan # nao, então muda estado de online status
 
+	#sim, limpa debunce e muda estado
 	clrf debOnLine ; zera reg debounce
 	banksel vPLOTStatus	; ENTAO alterna LED e status
-	movlw .1 << PLOTOnLine
-	xorwf vPLOTStatus, F
+	movlw .1 << PLOTOnLineBit
+	xorwf vPLOTStatus, F # está errado, deve FIXAR em 1 neste caso
 	goto FimKeyScan
 
 ;*******
@@ -2154,7 +2158,7 @@ actDownR
 
 	; ativa desenho
 	banksel vPLOTStatus
-	bsf vPLOTStatus, PLOTDrawing
+	bsf vPLOTStatus, PLOTDrawingBit
 
 	return
 
@@ -2195,7 +2199,7 @@ actRightR
 
 	; ativa desenho	
 	banksel vPLOTStatus
-	bsf vPLOTStatus, PLOTDrawing
+	bsf vPLOTStatus, PLOTDrawingBit
 	return
 
 ;************************************
