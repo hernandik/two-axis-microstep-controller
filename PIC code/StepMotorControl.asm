@@ -103,7 +103,7 @@
 	list p=16f877A
 
 	#include <p16f877a.inc>
-	#include "UARTInt.inc"
+	#include "UART/UARTInt.inc"
 
 #define XTAL .20 ; clock frequency (MHz)
 #define BRATE .150; Te = 1000 (us)
@@ -439,7 +439,7 @@ fimLed3
 	goto 	TransferRecdDataToExec		; Exitem dados pendentes
 	
 	bsf     vFIFOStatus,FIFOBufEmptyBit   	; Nao existem dados pendentes
-	goto ExitInt						; encerra INT
+	goto ExitInt				; encerra INT
 
 TransferRecdDataToExec	; transfere os 15 bytes de dados a partir do endereço informado por
 	bankisel vFIFOBuffer	; vFIFORdPtr
@@ -447,7 +447,7 @@ TransferRecdDataToExec	; transfere os 15 bytes de dados a partir do endereço inf
 	addlw low(vFIFOBuffer)
 	movwf FSR
 
-	banksel cANGX		; move os proximos 15 bytes 
+	banksel cANGX			; move os proximos 15 bytes 
 	movf INDF,W			; 	do FIFO para a area de desenho 
 	movwf cANGX			; 	executado apenas quando vai
 	incf FSR,F			; 	carregar linha
@@ -1082,11 +1082,11 @@ LINHA
 	clrf vFIFOWrPtr	; sim, zera ponteiro escrita
 
 	btfsc vFIFOStatus,FIFOBufFulBit	; Já estava cheio?
-	goto rFIFOBufFull	; buffer cheio, ativa OVERFLOW e
-						; evita que Cnt ultrapasse limite contagem
+	goto rFIFOBufFull		; buffer cheio, ativa OVERFLOW e
+					; evita que Cnt ultrapasse limite contagem
 	
 	bcf vFIFOStatus, FIFOBufEmptyBit	; buffer nao está mais vazio
-	incf vFIFODataCnt,F	; numero de bytes chegou ao limite? ativa flag de FIFOBufFulBit
+	incf vFIFODataCnt,F			; numero de bytes chegou ao limite? ativa flag de FIFOBufFulBit
 	movlw FIFO_N_REG
 	xorwf vFIFODataCnt,W
 	btfsc STATUS,Z
@@ -1095,7 +1095,7 @@ LINHA
 	goto rFIFOContinue
 
 rFIFOBufFull
-	bsf vFIFOStatus,FIFOBufOFBit		; marca o Overflow do buffer!, dados sobre escritos
+	bsf vFIFOStatus,FIFOBufOFBit			; marca o Overflow do buffer!, dados sobre escritos
 	; nao incrementa FIFO ;incf vFIFODataCnt	; numero de bytes chegou ao limite? ativa flag de FIFOBufFulBit
 	bcf vFIFOStatus, FIFOBufEmptyBit
 

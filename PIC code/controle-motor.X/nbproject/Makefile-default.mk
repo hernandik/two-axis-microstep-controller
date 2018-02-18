@@ -45,17 +45,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED=../UARTInt.asm ../stepMotorControl.asm
+SOURCEFILES_QUOTED_IF_SPACED=../stepMotorControl.asm ../StepMotorControl.asm
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/_ext/1472/UARTInt.o ${OBJECTDIR}/_ext/1472/stepMotorControl.o
-POSSIBLE_DEPFILES=${OBJECTDIR}/_ext/1472/UARTInt.o.d ${OBJECTDIR}/_ext/1472/stepMotorControl.o.d
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/_ext/1472/stepMotorControl.o ${OBJECTDIR}/_ext/1472/StepMotorControl.o
+POSSIBLE_DEPFILES=${OBJECTDIR}/_ext/1472/stepMotorControl.o.d ${OBJECTDIR}/_ext/1472/StepMotorControl.o.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/_ext/1472/UARTInt.o ${OBJECTDIR}/_ext/1472/stepMotorControl.o
+OBJECTFILES=${OBJECTDIR}/_ext/1472/stepMotorControl.o ${OBJECTDIR}/_ext/1472/StepMotorControl.o
 
 # Source Files
-SOURCEFILES=../UARTInt.asm ../stepMotorControl.asm
+SOURCEFILES=../stepMotorControl.asm ../StepMotorControl.asm
 
 
 CFLAGS=
@@ -82,14 +82,6 @@ MP_LINKER_DEBUG_OPTION=
 # ------------------------------------------------------------------------------------
 # Rules for buildStep: assemble
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
-${OBJECTDIR}/_ext/1472/UARTInt.o: ../UARTInt.asm  nbproject/Makefile-${CND_CONF}.mk
-	@${MKDIR} "${OBJECTDIR}/_ext/1472" 
-	@${RM} ${OBJECTDIR}/_ext/1472/UARTInt.o.d 
-	@${RM} ${OBJECTDIR}/_ext/1472/UARTInt.o 
-	@${FIXDEPS} dummy.d -e "${OBJECTDIR}/_ext/1472/UARTInt.err" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -d__DEBUG -d__MPLAB_DEBUGGER_SIMULATOR=1 -q -p$(MP_PROCESSOR_OPTION)  -l\"${OBJECTDIR}/_ext/1472/UARTInt.lst\" -e\"${OBJECTDIR}/_ext/1472/UARTInt.err\" $(ASM_OPTIONS)   -o\"${OBJECTDIR}/_ext/1472/UARTInt.o\" \"../UARTInt.asm\" 
-	@${DEP_GEN} -d "${OBJECTDIR}/_ext/1472/UARTInt.o"
-	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/UARTInt.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
-	
 ${OBJECTDIR}/_ext/1472/stepMotorControl.o: ../stepMotorControl.asm  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} "${OBJECTDIR}/_ext/1472" 
 	@${RM} ${OBJECTDIR}/_ext/1472/stepMotorControl.o.d 
@@ -98,15 +90,15 @@ ${OBJECTDIR}/_ext/1472/stepMotorControl.o: ../stepMotorControl.asm  nbproject/Ma
 	@${DEP_GEN} -d "${OBJECTDIR}/_ext/1472/stepMotorControl.o"
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/stepMotorControl.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
 	
-else
-${OBJECTDIR}/_ext/1472/UARTInt.o: ../UARTInt.asm  nbproject/Makefile-${CND_CONF}.mk
+${OBJECTDIR}/_ext/1472/StepMotorControl.o: ../StepMotorControl.asm  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} "${OBJECTDIR}/_ext/1472" 
-	@${RM} ${OBJECTDIR}/_ext/1472/UARTInt.o.d 
-	@${RM} ${OBJECTDIR}/_ext/1472/UARTInt.o 
-	@${FIXDEPS} dummy.d -e "${OBJECTDIR}/_ext/1472/UARTInt.err" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -q -p$(MP_PROCESSOR_OPTION)  -l\"${OBJECTDIR}/_ext/1472/UARTInt.lst\" -e\"${OBJECTDIR}/_ext/1472/UARTInt.err\" $(ASM_OPTIONS)   -o\"${OBJECTDIR}/_ext/1472/UARTInt.o\" \"../UARTInt.asm\" 
-	@${DEP_GEN} -d "${OBJECTDIR}/_ext/1472/UARTInt.o"
-	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/UARTInt.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
+	@${RM} ${OBJECTDIR}/_ext/1472/StepMotorControl.o.d 
+	@${RM} ${OBJECTDIR}/_ext/1472/StepMotorControl.o 
+	@${FIXDEPS} dummy.d -e "${OBJECTDIR}/_ext/1472/StepMotorControl.err" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -d__DEBUG -d__MPLAB_DEBUGGER_SIMULATOR=1 -q -p$(MP_PROCESSOR_OPTION)  -l\"${OBJECTDIR}/_ext/1472/StepMotorControl.lst\" -e\"${OBJECTDIR}/_ext/1472/StepMotorControl.err\" $(ASM_OPTIONS)   -o\"${OBJECTDIR}/_ext/1472/StepMotorControl.o\" \"../StepMotorControl.asm\" 
+	@${DEP_GEN} -d "${OBJECTDIR}/_ext/1472/StepMotorControl.o"
+	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/StepMotorControl.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
 	
+else
 ${OBJECTDIR}/_ext/1472/stepMotorControl.o: ../stepMotorControl.asm  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} "${OBJECTDIR}/_ext/1472" 
 	@${RM} ${OBJECTDIR}/_ext/1472/stepMotorControl.o.d 
@@ -114,6 +106,14 @@ ${OBJECTDIR}/_ext/1472/stepMotorControl.o: ../stepMotorControl.asm  nbproject/Ma
 	@${FIXDEPS} dummy.d -e "${OBJECTDIR}/_ext/1472/stepMotorControl.err" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -q -p$(MP_PROCESSOR_OPTION)  -l\"${OBJECTDIR}/_ext/1472/stepMotorControl.lst\" -e\"${OBJECTDIR}/_ext/1472/stepMotorControl.err\" $(ASM_OPTIONS)   -o\"${OBJECTDIR}/_ext/1472/stepMotorControl.o\" \"../stepMotorControl.asm\" 
 	@${DEP_GEN} -d "${OBJECTDIR}/_ext/1472/stepMotorControl.o"
 	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/stepMotorControl.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
+	
+${OBJECTDIR}/_ext/1472/StepMotorControl.o: ../StepMotorControl.asm  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} "${OBJECTDIR}/_ext/1472" 
+	@${RM} ${OBJECTDIR}/_ext/1472/StepMotorControl.o.d 
+	@${RM} ${OBJECTDIR}/_ext/1472/StepMotorControl.o 
+	@${FIXDEPS} dummy.d -e "${OBJECTDIR}/_ext/1472/StepMotorControl.err" $(SILENT) -c ${MP_AS} $(MP_EXTRA_AS_PRE) -q -p$(MP_PROCESSOR_OPTION)  -l\"${OBJECTDIR}/_ext/1472/StepMotorControl.lst\" -e\"${OBJECTDIR}/_ext/1472/StepMotorControl.err\" $(ASM_OPTIONS)   -o\"${OBJECTDIR}/_ext/1472/StepMotorControl.o\" \"../StepMotorControl.asm\" 
+	@${DEP_GEN} -d "${OBJECTDIR}/_ext/1472/StepMotorControl.o"
+	@${FIXDEPS} "${OBJECTDIR}/_ext/1472/StepMotorControl.o.d" $(SILENT) -rsi ${MP_AS_DIR} -c18 
 	
 endif
 
