@@ -1,14 +1,14 @@
 ;*********************************************************************
 ;*
 ;*  This implements a generic library functionality to support UART
-;*  for PIC18 family.
+;*  for PIC16 family
 ;*  It adds additional functionality of Rx/Tx user defined FIFO buffer
 ;*
 ;*********************************************************************
-;* FileName:            18UARTI.asm
-;* Dependencies:        P18xxx.inc
+;* FileName:            UARTInt.asm
+;* Dependencies:        P16xxx.inc
 ;*                      UARTInt.inc
-;* Processor:           PIC18xxxxx
+;* Processor:           PIC16xxxx
 ;* Assembler:           MPASMWIN 02.70.02 or higher
 ;* Linker:              MPLINK 2.33.00 or higher
 ;* Company:             Microchip Technology, Inc.
@@ -37,14 +37,13 @@
 ;* Author               Date            Comment
 ;*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ;* Gaurang Kavaiya      Nov 17, 2000    Initial Release 
-;* Gaurang Kavaiya      Sep 27, 2002    Modified for Application Maestro
-;* Gaurang Kavaiya      Feb 11, 2003    Enhancements for Application Maestro
-;* Gaurang Kavaiya      Mar 12, 2003    Removed Linear FIFO buf support
+;* Gaurang Kavaiya      Sep 27, 2002    Modified for Maestro 
+;* Gaurang Kavaiya      Feb 11, 2003    Enhancements for MpAM
+;* Gaurang Kavaiya      Mar 7,  2003    Optimization & clean-up
 ;* Gaurang Kavaiya      Mar 12, 2003    Removed Liner FIFO Buf Suprt<V1.0>
-;*
 ;********************************************************************/
 
-
+        errorlevel      -302            ;Ignore Banksel warning
 
 _UARTIntcode   code
 
@@ -59,11 +58,11 @@ _UARTIntcode   code
 ;       flushes the Rx and Tx buffer. It clears all USART errors
 ;
 ; Input: None
-;       
+;
 ;
 ; Output: None
 ;
-; Side Effects: Databank changed
+; Side Effects: Databank, W changed
 ;
 ; Stack requirement: 1 level deep
 ;
@@ -71,14 +70,17 @@ _UARTIntcode   code
 
 UARTIntInit:
 
-        GLOBAL  UARTIntInit
+        GLOBAL      UARTIntInit
+
         movlw   SPBRG_VAL       ;Initial baud rate Value
+        banksel SPBRG
         movwf   SPBRG           ;Set Baud Rate
+
+        banksel TXSTA
         clrf    TXSTA           ;Clear Transmit Status Register
 
 #ifdef  UARTINT_TXON
         bsf     TXSTA,TXEN      ;Tx. Enabled
-        bcf     PIE1,TXIE
 #endif
 
 
@@ -86,14 +88,20 @@ UARTIntInit:
         bsf     TXSTA,BRGH      ;Set BRGH value HIGH
 #endif
 
-
+#ifdef  UARTINT_TXON
+        banksel PIE1
+        bcf     PIE1,TXIE
+#endif
+        
 #ifdef  UARTINT_RXON
         bsf     PIE1,RCIE       ;Enable receive interrupt
 #endif
 
+        banksel RCSTA
         clrf    RCSTA           ;Clear Receive status register
         bsf     RCSTA,SPEN      ;Enable Serial Port
         bsf     RCSTA,CREN      ;Enable Continuous Receive
+
 
 #ifdef  UARTINT_TXON
         banksel vUARTIntTxBufDataCnt
@@ -113,16 +121,23 @@ UARTIntInit:
         clrf    vUARTIntStatus      ;Clear all the Errors
 
 
+
 #ifdef  UARTINT_TXON
+
+        banksel INTCON
         bsf     INTCON,GIE      ;Enable Global Interrupt
         bsf     INTCON,PEIE     ;Enable Peripheral Interrupt
 
 #else
+
         #ifdef  UARTINT_RXON
+        banksel INTCON
         bsf     INTCON,GIE      ;Enable Global Interrupt
         bsf     INTCON,PEIE     ;Enable Peripheral Interrupt      
         #endif  
 #endif        
+
+
         return
 
 
@@ -151,7 +166,7 @@ UARTIntInit:
 ;       If success Received byte in W register
 ;
 ;
-; Side Effects: Databank, FSR0, W , STATUS value changed
+; Side Effects: Databank, FSR, W , STATUS value changed
 ;
 ; Stack requirement: 1 level deep
 ;
@@ -163,24 +178,18 @@ UARTIntGetCh:
 
         banksel vUARTIntRxBufDataCnt
         movf    vUARTIntRxBufDataCnt,W
-        bnz     TransferRecdData
+        btfss   STATUS,Z                ;Check if data is availabe in Rx buf
+        goto    TransferRecdData
 
         bsf     vUARTIntStatus,UARTIntRxBufEmpty   ;Set UARTIntRxBufEmpty flag
         retlw   0
 
-TransferRecdData
-        #ifdef        _DONT_USE_LFSR
-        movlw    low(vUARTIntRxBuffer)
-        movwf   FSR0L
-        movlw    high(vUARTIntRxBuffer)
-        movwf   FSR0H        
-        #else
-        LFSR    FSR0, vUARTIntRxBuffer
-        #endif
-       
-        movf    vUARTIntRxBufRdPtr,W
-        movff   PLUSW0,temp3
-
+TransferRecdData    
+        bankisel vUARTIntRxBuffer       ;The UDATA segments ensures that whole
+        movf    vUARTIntRxBufRdPtr,W    ;buffer will be in one bank. Therefore
+        addlw   low(vUARTIntRxBuffer)   ;setting IRP bit based on buffer
+                                        ;start address is OK
+        movwf   FSR                     ;Point FSR to Wrtie location
         incf    vUARTIntRxBufRdPtr,F    ;Increment Read pointer
         movlw   UARTINT_RX_BUFFER_SIZE  ;If read pointer has reached the maximum
         xorwf   vUARTIntRxBufRdPtr,W    ;value then reset it for roll-over
@@ -192,7 +201,7 @@ TransferRecdData
         bcf     vUARTIntStatus,UARTIntRxBufFul    ;is read so Buffer has space
         bcf     vUARTIntStatus,UARTIntRxBufOF  ;for the new data
 
-        movff   temp3,WREG              ;Read the FIFO buffer data
+        movf    INDF,W                  ;Read the FIFO buffer data
 
         return
 #endif
@@ -214,7 +223,7 @@ TransferRecdData
 ;       It writes Content of W reg. in Transmit Buffer. If vUARTIntTxBuffer
 ;       is already empty then it immediately transmits the data. If
 ;       Buffer is already full then it returns without any job.
-;       It puts the data to be transmitted in vUARTIntTxBuffer and
+;       Otherwise it puts the data to be transmitted in vUARTIntTxBuffer and
 ;       accordingly adjusts vUARTIntTxBufDataCnt.
 ;
 ; Input:    Data to be transmitted in W reg.
@@ -222,7 +231,7 @@ TransferRecdData
 ; Output:   If vUARTIntTxBuffer becomes full it sets UARTIntTxBufFul flag bit in
 ;       USARTErros
 ;
-; Side Effects: Databank, FSR0, W , STATUS value changed
+; Side Effects: Databank , FSR, W , STATUS value changed
 ;
 ; Stack requirement: 1 level deep
 ;
@@ -239,51 +248,50 @@ UARTIntPutCh:
         return                  ;If buffer Full then return
 
         movf    vUARTIntTxBufDataCnt,W ;If vUARTIntTxBuffer is empty then transfer
-        bnz     AppendTxBuffer
+        btfss   STATUS,Z        ;data for immediate transmission
+        goto    AppendTxBuffer
 
-;Get the data to be transmitted from temporary location
-;Immediately Transmit Data
-        movff   temp3,TXREG    
+        movf    temp3,W         ;from temporary location
+        banksel TXREG
+        movwf   TXREG           ;Immediately Transmit Data
 
+        banksel vUARTIntTxBufDataCnt
         incf    vUARTIntTxBufRdPtr,F    ;Increment Read pointer
         movlw   UARTINT_TX_BUFFER_SIZE  ;If read pointer has reached the maximum
         xorwf   vUARTIntTxBufRdPtr,W    ;value then reset it for roll-over
         btfsc   STATUS,Z
         clrf    vUARTIntTxBufRdPtr      
 
-;        return
 ;copy the data in buffer for Ptr Updates
 
 
 AppendTxBuffer
-        #ifdef        _DONT_USE_LFSR
-        movlw    low(vUARTIntTxBuffer)
-        movwf   FSR0L
-        movlw    high(vUARTIntTxBuffer)
-        movwf   FSR0H        
-        #else
-        LFSR    FSR0, vUARTIntTxBuffer
-        #endif
-
-     
-        movf    vUARTIntTxBufWrPtr,W
-        movff   temp3,PLUSW0
-
+    
+        bankisel vUARTIntTxBuffer       ;The UDATA segments ensures that whole
+        movf    vUARTIntTxBufWrPtr,W    ;buffer will be in one bank. Therefore
+        addlw   low(vUARTIntTxBuffer)   ;setting IRP bit based on buffer
+                                        ;start address is OK
+        movwf   FSR                     ;Point FSR to Wrtie location
         incf    vUARTIntTxBufWrPtr,F    ;Increment Write pointer
         movlw   UARTINT_TX_BUFFER_SIZE  ;If Write pointer has reached the maximum
         xorwf   vUARTIntTxBufWrPtr,W    ;value then reset it for roll-over
         btfsc   STATUS,Z
         clrf    vUARTIntTxBufWrPtr      
 
-        incf    vUARTIntTxBufDataCnt,F  ;Decrement vUARTIntTxBuffer data size
+        incf    vUARTIntTxBufDataCnt,F  ;Decrement vUARTIntRxBuffer data size
         movlw   UARTINT_TX_BUFFER_SIZE  ;If Write pointer has reached the maximum
         xorwf   vUARTIntTxBufDataCnt,W  ;value then reset it for roll-over
         btfss   STATUS,Z
-        bra     TxBufNotFull
+        goto    TxBufNotFull
 
         bsf     vUARTIntStatus,UARTIntTxBufFul    ;is Buffer s full
 
+
 TxBufNotFull
+        movf    temp3,W
+        movwf   INDF                    ;Copy the data into FIFO buffer
+
+        banksel PIE1
         bsf     PIE1,TXIE       ;Enable TX interrupt
 
         return
@@ -324,7 +332,7 @@ TxBufNotFull
 ;       will clear the UARTIntTxBufFul bit to indicate space for data in
 ;       vUARTIntTxBuffer.
 ;
-; Side Effects: W, STATUS, data bank changed
+; Side Effects: Databank, W, STATUS changed
 ;
 ; Stack requirement: 1 level deep
 ;
@@ -334,116 +342,119 @@ UARTIntISR:
         GLOBAL  UARTIntISR
 
 
-        movff   FSR0L,ISR_FSR0L  ;Save FSR0L value
-        movff   FSR0H,ISR_FSR0H  ;Save FSR0H value
+        movf    FSR,W
+        banksel ISR_FSR0L       ;Save FSR
+        movwf   ISR_FSR0L
 
+        banksel PIR1
         btfss   PIR1,TXIF       ;Check for Tx Interrupt
-        bra     ChkReceiver
+        goto    ChkReceiver
 
 #ifdef  UARTINT_TXON
+        banksel PIE1
         btfss   PIE1,TXIE       ;Check if TX int. enabled
-        bra     ChkReceiver
+        goto    ChkReceiver
 
         banksel vUARTIntStatus     ;Clear UARTIntTxBufFul Error bit as Data
         bcf     vUARTIntStatus,UARTIntTxBufFul    ;is transmitted so Buffer has
                                 ;space for new data
 
         decfsz  vUARTIntTxBufDataCnt,F     ;is already transmitted.
-        bra     TransmitData
+        goto    TransmitData
 
- ;Add Provision for TxBufEmpty flag
- 
+;Place for possible Tx Buffer Empty flag
+
+        banksel PIE1
         bcf     PIE1,TXIE       ;Disable TX interrupt until we have
                                 ;more data to transmit
-        bra      ChkReceiver     ;Chk if any data is received
+        goto    ChkReceiver     ;Chk if any data is received
 
 
 TransmitData
-      
-        #ifdef        _DONT_USE_LFSR
-        movlw    low(vUARTIntTxBuffer)
-        movwf   FSR0L
-        movlw    high(vUARTIntTxBuffer)
-        movwf   FSR0H        
-        #else
-        LFSR    FSR0, vUARTIntTxBuffer
-        #endif
-
-        movf    vUARTIntTxBufRdPtr,W
-        movff   PLUSW0, TXREG
-
+        bankisel vUARTIntTxBuffer       ;The UDATA segments ensures that whole
+        movf    vUARTIntTxBufRdPtr,W    ;buffer will be in one bank. Therefore
+        addlw   low(vUARTIntTxBuffer)   ;setting IRP bit based on buffer
+                                        ;start address is OK     
+        movwf   FSR                     ;Point FSR to Wrtie location
         incf    vUARTIntTxBufRdPtr,F    ;Increment Read pointer
         movlw   UARTINT_TX_BUFFER_SIZE  ;If read pointer has reached the maximum
         xorwf   vUARTIntTxBufRdPtr,W    ;value then reset it for roll-over
         btfsc   STATUS,Z
         clrf    vUARTIntTxBufRdPtr      
 
+        movf    INDF,W
+        banksel TXREG           ;Transmit Next Data
+        movwf   TXREG
+
 #endif
 
 
 ChkReceiver
  #ifdef  UARTINT_RXON
-        btfss   PIE1,RCIE       ;Check if Tx Interrupt is enabled
-        bra     EndISR          ;Some other interrupt, exit
-
-
+        banksel PIE1
+        btfss   PIE1,RCIE       ;Check for Receive Interrupt
+        goto    EndISR          ;Some other interrupt, exit
+        
+        banksel PIR1
         btfss   PIR1,RCIF       ;Check for Receive Interrupt
-        bra     EndISR          ;Some other interrupt, exit
+        goto    EndISR          ;Some other interrupt, exit
 
 ;Not required as read from RCREG will clear it
 ;        bcf     PIR1,RCIF       ;Clear Receive Interrupt
 
-        movff   RCREG,temp1
+        banksel RCREG
+        movf    RCREG,W         ;Read RCREG data to clear the interrupt
+        banksel temp1   
+        movwf   temp1
 
+        banksel RCSTA
         movlw   06h             ;Mask out unwanted bits
         andwf   RCSTA,W         ;Check for errors
-        bnz     RcvError        ;Found error, flag it
+        btfss   STATUS,Z
+        goto    RcvError        ;Found error, flag it
 
         banksel vUARTIntStatus     ;
         btfsc   vUARTIntStatus,UARTIntRxBufOF  ;Check for UARTIntRxBufOF bit
-        bra     EndISR          ;If buffer Full then return
+        goto    EndISR          ;If buffer Full then return
 
         btfss   vUARTIntStatus,UARTIntRxBufFul    ;Check for UARTIntRxBufFul bit
-        bra     AppendRxBuffer   ;if Buffer Full then set Rx Buffer
+        goto    AppendRxBuffer   ;if Buffer Full then set Rx Buffer
         bsf     vUARTIntStatus,UARTIntRxBufOF  ;Over Flow flag to indicate that
-        bra     EndISR           ;data is missed.
+        goto    EndISR           ;data is missed.
 
 
 AppendRxBuffer
-        #ifdef        _DONT_USE_LFSR
-        movlw    low(vUARTIntRxBuffer)
-        movwf   FSR0L
-        movlw    high(vUARTIntRxBuffer)
-        movwf   FSR0H        
-        #else
-        LFSR    FSR0, vUARTIntRxBuffer
-        #endif
-
-        bcf     vUARTIntStatus,UARTIntRxBufEmpty ;Clear Buf empty flag
-        
-        incf    vUARTIntRxBufDataCnt,F  ;Decrement vUARTIntRxBuffer data size
-        movlw   UARTINT_RX_BUFFER_SIZE  ;If Buffer has reached the maximum
-        xorwf   vUARTIntRxBufDataCnt,W  ;value then set the falg for full
-        bz      RxBufFull
-
-        movf    vUARTIntRxBufWrPtr,W    ;Point to previous location
-        movff   temp1, PLUSW0           ;copy the data into FIFO buffer
-
+        banksel vUARTIntRxBufDataCnt
+        bankisel vUARTIntRxBuffer       ;The UDATA segments ensures that whole
+        movf    vUARTIntRxBufWrPtr,W    ;buffer will be in one bank. Therefore
+        addlw   low(vUARTIntRxBuffer)   ;setting IRP bit based on buffer
+                                        ;start address is OK     
+        movwf   FSR                     ;Point FSR to Wrtie location
         incf    vUARTIntRxBufWrPtr,F    ;Increment Write pointer
         movlw   UARTINT_RX_BUFFER_SIZE  ;If Write pointer has reached the maximum
         xorwf   vUARTIntRxBufWrPtr,W    ;value then reset it for roll-over
         btfsc   STATUS,Z
         clrf    vUARTIntRxBufWrPtr      
 
-        bra     EndISR
+        bcf     vUARTIntStatus, UARTIntRxBufEmpty
+        incf    vUARTIntRxBufDataCnt,F  ;Decrement vUARTIntRxBuffer data size
+        movlw   UARTINT_RX_BUFFER_SIZE  ;If Buffer has reached the maximum
+        xorwf   vUARTIntRxBufDataCnt,W  ;value then set the falg for full
+        btfsc   STATUS,Z
+        goto    RxBufFull
+
+        movf    temp1,W
+        movwf   INDF                    ;Copy the data into FIFO buffer
+        goto    EndISR
 
 
 RxBufFull
         bsf     vUARTIntStatus,UARTIntRxBufFul    ;in vUARTIntStatus
-        bra     EndISR
+        goto    EndISR
 
 
 RcvError
+        banksel RCSTA          
         bcf     RCSTA,CREN      ;Clear reciever status
         bsf     RCSTA,CREN
         banksel vUARTIntStatus
@@ -452,10 +463,11 @@ RcvError
 
 
 EndISR
-
-        movff   ISR_FSR0H, FSR0H  ;Restore FSR0H value
-        movff   ISR_FSR0L, FSR0L  ;Restore FSR0L value
+        banksel ISR_FSR0L
+        movf    ISR_FSR0L,W
+        movwf   FSR             ;Restore FSR
 
         return
+
 
 

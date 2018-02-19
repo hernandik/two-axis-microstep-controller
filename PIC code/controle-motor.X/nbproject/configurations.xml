@@ -15,7 +15,7 @@
                    projectFiles="true">
       <logicalFolder name="UART" displayName="UART" projectFiles="true">
       </logicalFolder>
-      <itemPath>../stepMotorControl.asm</itemPath>
+      <itemPath>../StepMotorControl.asm</itemPath>
     </logicalFolder>
     <logicalFolder name="UART" displayName="UART" projectFiles="true">
     </logicalFolder>
@@ -24,7 +24,6 @@
                    projectFiles="false">
       <itemPath>Makefile</itemPath>
     </logicalFolder>
-    <itemPath>../StepMotorControl.asm</itemPath>
   </logicalFolder>
   <sourceRootList>
     <Elem>..</Elem>
@@ -64,19 +63,6 @@
         <makeCustomizationEnableLongLines>false</makeCustomizationEnableLongLines>
         <makeCustomizationNormalizeHexFile>false</makeCustomizationNormalizeHexFile>
       </makeCustomizationType>
-      <item path="../stepMotorControl.asm" ex="false" overriding="false">
-        <MPASMWIN-AS>
-        </MPASMWIN-AS>
-        <MPASMWIN-LD>
-        </MPASMWIN-LD>
-        <mpasmsuite>
-          <property key="absolute-mode" value="false"/>
-          <property key="eeprom-width" value="8"/>
-          <property key="extended-mode" value="false"/>
-          <property key="extended-mode-mpasm" value="false"/>
-          <property key="extended-mode-mplink" value="false"/>
-        </mpasmsuite>
-      </item>
       <MPASMWIN-AS>
         <property key="cross.reference.file" value=""/>
         <property key="default.radix" value="HEX"/>

@@ -1,0 +1,576 @@
+MPASM  5.06                       16UARTI.ASM   2-18-2018  18:30:20         PAGE  1
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00001 ;*********************************************************************
+                      00002 ;*
+                      00003 ;*  This implements a generic library functionality to support UART
+                      00004 ;*  for PIC16 family
+                      00005 ;*  It adds additional functionality of Rx/Tx user defined FIFO buffer
+                      00006 ;*
+                      00007 ;*********************************************************************
+                      00008 ;* FileName:            UARTInt.asm
+                      00009 ;* Dependencies:        P16xxx.inc
+                      00010 ;*                      UARTInt.inc
+                      00011 ;* Processor:           PIC16xxxx
+                      00012 ;* Assembler:           MPASMWIN 02.70.02 or higher
+                      00013 ;* Linker:              MPLINK 2.33.00 or higher
+                      00014 ;* Company:             Microchip Technology, Inc.
+                      00015 ;*
+                      00016 ;* Software License Agreement
+                      00017 ;*
+                      00018 ;* The software supplied herewith by Microchip Technology Incorporated
+                      00019 ;* (the "Company") for its PICmicro® Microcontroller is intended and
+                      00020 ;* supplied to you, the Company's customer, for use solely and
+                      00021 ;* exclusively on Microchip PICmicro Microcontroller products. The
+                      00022 ;* software is owned by the Company and/or its supplier, and is
+                      00023 ;* protected under applicable copyright laws. All rights are reserved.
+                      00024 ;* Any use in violation of the foregoing restrictions may subject the
+                      00025 ;* user to criminal sanctions under applicable laws, as well as to
+                      00026 ;* civil liability for the breach of the terms and conditions of this
+                      00027 ;* license.
+                      00028 ;*
+                      00029 ;* THIS SOFTWARE IS PROVIDED IN AN "AS IS" CONDITION. NO WARRANTIES,
+                      00030 ;* WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
+                      00031 ;* TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+                      00032 ;* PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
+                      00033 ;* IN ANY CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL OR
+                      00034 ;* CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
+                      00035 ;*
+                      00036 ;*
+                      00037 ;* Author               Date            Comment
+                      00038 ;*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                      00039 ;* Gaurang Kavaiya      Nov 17, 2000    Initial Release 
+                      00040 ;* Gaurang Kavaiya      Sep 27, 2002    Modified for Maestro 
+                      00041 ;* Gaurang Kavaiya      Feb 11, 2003    Enhancements for MpAM
+                      00042 ;* Gaurang Kavaiya      Mar 7,  2003    Optimization & clean-up
+                      00043 ;* Gaurang Kavaiya      Mar 12, 2003    Removed Liner FIFO Buf Suprt<V1.0>
+                      00044 ;********************************************************************/
+                      00045 
+                      00046         errorlevel      -302            ;Ignore Banksel warning
+                      00047 
+                      00048 _UARTIntcode   code
+                      00049 
+                      00050 ;****************************************************************************
+                      00051 ; Function: UARTIntInit
+                      00052 ;
+                      00053 ; PreCondition: None
+MPASM  5.06                       16UARTI.ASM   2-18-2018  18:30:20         PAGE  2
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00054 ;
+                      00055 ; Overview:
+                      00056 ;       This routine is used for Serial Port Initialization
+                      00057 ;       It initializes Port according to compile time selection and
+                      00058 ;       flushes the Rx and Tx buffer. It clears all USART errors
+                      00059 ;
+                      00060 ; Input: None
+                      00061 ;
+                      00062 ;
+                      00063 ; Output: None
+                      00064 ;
+                      00065 ; Side Effects: Databank, W changed
+                      00066 ;
+                      00067 ; Stack requirement: 1 level deep
+                      00068 ;
+                      00069 ;****************************************************************************
+                      00070 
+0000                  00071 UARTIntInit:
+                      00072 
+  0000                00073         GLOBAL      UARTIntInit
+                      00074 
+Error[113]  : Symbol not previously defined (SPBRG_VAL)
+0000   3000           00075         movlw   SPBRG_VAL       ;Initial baud rate Value
+Error[113]  : Symbol not previously defined (SPBRG)
+0001   1283 1303      00076         banksel SPBRG
+Error[113]  : Symbol not previously defined (SPBRG)
+0003   0080           00077         movwf   SPBRG           ;Set Baud Rate
+                      00078 
+Error[113]  : Symbol not previously defined (TXSTA)
+0004   1283 1303      00079         banksel TXSTA
+Error[113]  : Symbol not previously defined (TXSTA)
+0006   0180           00080         clrf    TXSTA           ;Clear Transmit Status Register
+                      00081 
+                      00082 #ifdef  UARTINT_TXON
+                      00083         bsf     TXSTA,TXEN      ;Tx. Enabled
+                      00084 #endif
+                      00085 
+                      00086 
+                      00087 #ifdef  BRGH_HIGH
+                      00088         bsf     TXSTA,BRGH      ;Set BRGH value HIGH
+                      00089 #endif
+                      00090 
+                      00091 #ifdef  UARTINT_TXON
+                      00092         banksel PIE1
+                      00093         bcf     PIE1,TXIE
+                      00094 #endif
+                      00095         
+                      00096 #ifdef  UARTINT_RXON
+                      00097         bsf     PIE1,RCIE       ;Enable receive interrupt
+                      00098 #endif
+                      00099 
+Error[113]  : Symbol not previously defined (RCSTA)
+0007   1283 1303      00100         banksel RCSTA
+MPASM  5.06                       16UARTI.ASM   2-18-2018  18:30:20         PAGE  3
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+Error[113]  : Symbol not previously defined (RCSTA)
+0009   0180           00101         clrf    RCSTA           ;Clear Receive status register
+Error[113]  : Symbol not previously defined (RCSTA)
+Error[113]  : Symbol not previously defined (SPEN)
+000A   1400           00102         bsf     RCSTA,SPEN      ;Enable Serial Port
+Error[113]  : Symbol not previously defined (RCSTA)
+Error[113]  : Symbol not previously defined (CREN)
+000B   1400           00103         bsf     RCSTA,CREN      ;Enable Continuous Receive
+                      00104 
+                      00105 
+                      00106 #ifdef  UARTINT_TXON
+                      00107         banksel vUARTIntTxBufDataCnt
+                      00108         clrf    vUARTIntTxBufDataCnt
+                      00109         clrf    vUARTIntTxBufRdPtr
+                      00110         clrf    vUARTIntTxBufWrPtr
+                      00111 #endif
+                      00112 
+                      00113 #ifdef  UARTINT_RXON
+                      00114         banksel vUARTIntRxBufDataCnt        
+                      00115         clrf    vUARTIntRxBufDataCnt
+                      00116         clrf    vUARTIntRxBufRdPtr
+                      00117         clrf    vUARTIntRxBufWrPtr
+                      00118 #endif
+                      00119         
+Error[113]  : Symbol not previously defined (vUARTIntStatus)
+000C   1283 1303      00120         banksel vUARTIntStatus
+Error[113]  : Symbol not previously defined (vUARTIntStatus)
+000E   0180           00121         clrf    vUARTIntStatus      ;Clear all the Errors
+                      00122 
+                      00123 
+                      00124 
+                      00125 #ifdef  UARTINT_TXON
+                      00126 
+                      00127         banksel INTCON
+                      00128         bsf     INTCON,GIE      ;Enable Global Interrupt
+                      00129         bsf     INTCON,PEIE     ;Enable Peripheral Interrupt
+                      00130 
+                      00131 #else
+                      00132 
+                      00133         #ifdef  UARTINT_RXON
+                      00134         banksel INTCON
+                      00135         bsf     INTCON,GIE      ;Enable Global Interrupt
+                      00136         bsf     INTCON,PEIE     ;Enable Peripheral Interrupt      
+                      00137         #endif  
+                      00138 #endif        
+                      00139 
+                      00140 
+000F   0008           00141         return
+                      00142 
+                      00143 
+                      00144 
+                      00145 
+                      00146 
+MPASM  5.06                       16UARTI.ASM   2-18-2018  18:30:20         PAGE  4
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00147 
+                      00148 
+                      00149 
+                      00150 #ifdef  UARTINT_RXON
+                      00151 ;****************************************************************************
+                      00152 ; Function: UARTIntGetCh
+                      00153 ;
+                      00154 ; PreCondition: None
+                      00155 ;
+                      00156 ; Overview:
+                      00157 ;       It reads data in Receive Buffer. If vUARTIntRxBuffer is already empty
+                      00158 ;       then it will set UARTIntRxBufEmpty bit in vUARTIntStatus.
+                      00159 ;       Otherwise returns received data in Wreg and accordingly
+                      00160 ;       adjusts vUARTIntRxBufDataCnt.
+                      00161         ;
+                      00162 ; Input:    None
+                      00163 ;
+                      00164 ; Output:   If success UARTIntRxBufEmpty=0 else UARTIntRxBufEmpty=1,
+                      00165 ;       UARTIntRxBufEmpty is defined in vUARTIntStatus
+                      00166 ;       If success Received byte in W register
+                      00167 ;
+                      00168 ;
+                      00169 ; Side Effects: Databank, FSR, W , STATUS value changed
+                      00170 ;
+                      00171 ; Stack requirement: 1 level deep
+                      00172 ;
+                      00173 ;****************************************************************************
+                      00174 
+                      00175 UARTIntGetCh:
+                      00176 
+                      00177         GLOBAL  UARTIntGetCh        ;
+                      00178 
+                      00179         banksel vUARTIntRxBufDataCnt
+                      00180         movf    vUARTIntRxBufDataCnt,W
+                      00181         btfss   STATUS,Z                ;Check if data is availabe in Rx buf
+                      00182         goto    TransferRecdData
+                      00183 
+                      00184         bsf     vUARTIntStatus,UARTIntRxBufEmpty   ;Set UARTIntRxBufEmpty flag
+                      00185         retlw   0
+                      00186 
+                      00187 TransferRecdData    
+                      00188         bankisel vUARTIntRxBuffer       ;The UDATA segments ensures that whole
+                      00189         movf    vUARTIntRxBufRdPtr,W    ;buffer will be in one bank. Therefore
+                      00190         addlw   low(vUARTIntRxBuffer)   ;setting IRP bit based on buffer
+                      00191                                         ;start address is OK
+                      00192         movwf   FSR                     ;Point FSR to Wrtie location
+                      00193         incf    vUARTIntRxBufRdPtr,F    ;Increment Read pointer
+                      00194         movlw   UARTINT_RX_BUFFER_SIZE  ;If read pointer has reached the maximum
+                      00195         xorwf   vUARTIntRxBufRdPtr,W    ;value then reset it for roll-over
+                      00196         btfsc   STATUS,Z
+                      00197         clrf    vUARTIntRxBufRdPtr      
+                      00198 
+                      00199         movf    INDF,W                  ;Read the FIFO buffer data
+MPASM  5.06                       16UARTI.ASM   2-18-2018  18:30:20         PAGE  5
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00200 
+                      00201         decf    vUARTIntRxBufDataCnt,F  ;Decrement vUARTIntRxBuffer data size
+                      00202         bcf     vUARTIntStatus,UARTIntRxBufFul    ;is read so Buffer has space
+                      00203         bcf     vUARTIntStatus,UARTIntRxBufOF  ;for the new data
+                      00204 
+                      00205         return
+                      00206 #endif
+                      00207 
+                      00208 
+                      00209 
+                      00210 
+                      00211 
+                      00212 
+                      00213 
+                      00214 
+                      00215 #ifdef  UARTINT_TXON
+                      00216 ;****************************************************************************
+                      00217 ; Function: UARTIntPutCh
+                      00218 ;
+                      00219 ; PreCondition: None
+                      00220 ;
+                      00221 ; Overview:
+                      00222 ;       It writes Content of W reg. in Transmit Buffer. If vUARTIntTxBuffer
+                      00223 ;       is already empty then it immediately transmits the data. If
+                      00224 ;       Buffer is already full then it returns without any job.
+                      00225 ;       Otherwise it puts the data to be transmitted in vUARTIntTxBuffer and
+                      00226 ;       accordingly adjusts vUARTIntTxBufDataCnt.
+                      00227 ;
+                      00228 ; Input:    Data to be transmitted in W reg.
+                      00229 ;
+                      00230 ; Output:   If vUARTIntTxBuffer becomes full it sets UARTIntTxBufFul flag bit in
+                      00231 ;       USARTErros
+                      00232 ;
+                      00233 ; Side Effects: Databank , FSR, W , STATUS value changed
+                      00234 ;
+                      00235 ; Stack requirement: 1 level deep
+                      00236 ;
+                      00237 ;****************************************************************************
+                      00238 
+                      00239 UARTIntPutCh:
+                      00240 
+                      00241         GLOBAL  UARTIntPutCh
+                      00242 
+                      00243         banksel temp3
+                      00244         movwf   temp3           ;Store Value in Temp. location
+                      00245 
+                      00246         btfsc   vUARTIntStatus,UARTIntTxBufFul    ;Check for UARTIntTxBufFul bit
+                      00247         return                  ;If buffer Full then return
+                      00248 
+                      00249         movf    vUARTIntTxBufDataCnt,W ;If vUARTIntTxBuffer is empty then transfer
+                      00250         btfss   STATUS,Z        ;data for immediate transmission
+                      00251         goto    AppendTxBuffer
+                      00252 
+MPASM  5.06                       16UARTI.ASM   2-18-2018  18:30:20         PAGE  6
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00253         movf    temp3,W         ;from temporary location
+                      00254         banksel TXREG
+                      00255         movwf   TXREG           ;Immediately Transmit Data
+                      00256 
+                      00257         banksel vUARTIntTxBufDataCnt
+                      00258         incf    vUARTIntTxBufRdPtr,F    ;Increment Read pointer
+                      00259         movlw   UARTINT_TX_BUFFER_SIZE  ;If read pointer has reached the maximum
+                      00260         xorwf   vUARTIntTxBufRdPtr,W    ;value then reset it for roll-over
+                      00261         btfsc   STATUS,Z
+                      00262         clrf    vUARTIntTxBufRdPtr      
+                      00263 
+                      00264 ;copy the data in buffer for Ptr Updates
+                      00265 
+                      00266 
+                      00267 AppendTxBuffer
+                      00268     
+                      00269         bankisel vUARTIntTxBuffer       ;The UDATA segments ensures that whole
+                      00270         movf    vUARTIntTxBufWrPtr,W    ;buffer will be in one bank. Therefore
+                      00271         addlw   low(vUARTIntTxBuffer)   ;setting IRP bit based on buffer
+                      00272                                         ;start address is OK
+                      00273         movwf   FSR                     ;Point FSR to Wrtie location
+                      00274         incf    vUARTIntTxBufWrPtr,F    ;Increment Write pointer
+                      00275         movlw   UARTINT_TX_BUFFER_SIZE  ;If Write pointer has reached the maximum
+                      00276         xorwf   vUARTIntTxBufWrPtr,W    ;value then reset it for roll-over
+                      00277         btfsc   STATUS,Z
+                      00278         clrf    vUARTIntTxBufWrPtr      
+                      00279 
+                      00280         incf    vUARTIntTxBufDataCnt,F  ;Decrement vUARTIntRxBuffer data size
+                      00281         movlw   UARTINT_TX_BUFFER_SIZE  ;If Write pointer has reached the maximum
+                      00282         xorwf   vUARTIntTxBufDataCnt,W  ;value then reset it for roll-over
+                      00283         btfss   STATUS,Z
+                      00284         goto    TxBufNotFull
+                      00285 
+                      00286         bsf     vUARTIntStatus,UARTIntTxBufFul    ;is Buffer s full
+                      00287 
+                      00288 
+                      00289 TxBufNotFull
+                      00290         movf    temp3,W
+                      00291         movwf   INDF                    ;Copy the data into FIFO buffer
+                      00292 
+                      00293         banksel PIE1
+                      00294         bsf     PIE1,TXIE       ;Enable TX interrupt
+                      00295 
+                      00296         return
+                      00297 #endif
+                      00298 
+                      00299 
+                      00300 
+                      00301 
+                      00302 
+                      00303 
+                      00304 
+                      00305 
+MPASM  5.06                       16UARTI.ASM   2-18-2018  18:30:20         PAGE  7
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00306 
+                      00307 ;****************************************************************************
+                      00308 ; Function: UARTIntISR
+                      00309 ;
+                      00310 ; PreCondition: None
+                      00311 ;
+                      00312 ; Overview:
+                      00313 ;       This is a Interrupt service routine for Serial Interrupt.
+                      00314 ;       It handles Reception and Transmission of data on interrupt.
+                      00315 ;       Call it from Interrupt service routine at proper Interrupt
+                      00316 ;       Vector (High or Low priority Vector)
+                      00317 ;
+                      00318 ; Input:
+                      00319 ;
+                      00320 ;
+                      00321 ; Output:   If data is received it puts it in vUARTIntRxBuffer and accordingly
+                      00322 ;       adjusts the RxBufferRdPtr and clears UARTIntRxBufEmpty flag.
+                      00323 ;       If Receive Buffer becomes full then it will set UARTIntRxBufFul
+                      00324 ;       bit. If data is received when Receive buffer was full it will
+                      00325 ;       set UARTIntRxBufOF flag to indicate that transmitted data has
+                      00326 ;       been missed because of full vUARTIntRxBuffer. If any error is
+                      00327 ;       generated in reception it will set UARTIntRxError flag bit.
+                      00328 ;
+                      00329 ;       If last data is transmitted then it will transmit next pending
+                      00330 ;       data if any. It will accordingly adjust the vUARTIntTxBufDataCnt. It
+                      00331 ;       will clear the UARTIntTxBufFul bit to indicate space for data in
+                      00332 ;       vUARTIntTxBuffer.
+                      00333 ;
+                      00334 ; Side Effects: Databank, W, STATUS changed
+                      00335 ;
+                      00336 ; Stack requirement: 1 level deep
+                      00337 ;
+                      00338 ;****************************************************************************
+                      00339 
+0010                  00340 UARTIntISR:
+  0000                00341         GLOBAL  UARTIntISR
+                      00342 
+                      00343 
+Error[113]  : Symbol not previously defined (FSR)
+0010   0800           00344         movf    FSR,W
+Error[113]  : Symbol not previously defined (ISR_FSR0L)
+0011   1283 1303      00345         banksel ISR_FSR0L       ;Save FSR
+Error[113]  : Symbol not previously defined (ISR_FSR0L)
+0013   0080           00346         movwf   ISR_FSR0L
+                      00347 
+Error[113]  : Symbol not previously defined (PIR1)
+0014   1283 1303      00348         banksel PIR1
+Error[113]  : Symbol not previously defined (PIR1)
+Error[113]  : Symbol not previously defined (TXIF)
+0016   1C00           00349         btfss   PIR1,TXIF       ;Check for Tx Interrupt
+0017   2???           00350         goto    ChkReceiver
+                      00351 
+                      00352 #ifdef  UARTINT_TXON
+MPASM  5.06                       16UARTI.ASM   2-18-2018  18:30:20         PAGE  8
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00353         banksel PIE1
+                      00354         btfss   PIE1,TXIE       ;Check if TX int. enabled
+                      00355         goto    ChkReceiver
+                      00356 
+                      00357         banksel vUARTIntStatus     ;Clear UARTIntTxBufFul Error bit as Data
+                      00358         bcf     vUARTIntStatus,UARTIntTxBufFul    ;is transmitted so Buffer has
+                      00359                                 ;space for new data
+                      00360 
+                      00361         decfsz  vUARTIntTxBufDataCnt,F     ;is already transmitted.
+                      00362         goto    TransmitData
+                      00363 
+                      00364 ;Place for possible Tx Buffer Empty flag
+                      00365 
+                      00366         banksel PIE1
+                      00367         bcf     PIE1,TXIE       ;Disable TX interrupt until we have
+                      00368                                 ;more data to transmit
+                      00369         goto    ChkReceiver     ;Chk if any data is received
+                      00370 
+                      00371 
+                      00372 TransmitData
+                      00373         bankisel vUARTIntTxBuffer       ;The UDATA segments ensures that whole
+                      00374         movf    vUARTIntTxBufRdPtr,W    ;buffer will be in one bank. Therefore
+                      00375         addlw   low(vUARTIntTxBuffer)   ;setting IRP bit based on buffer
+                      00376                                         ;start address is OK     
+                      00377         movwf   FSR                     ;Point FSR to Wrtie location
+                      00378         incf    vUARTIntTxBufRdPtr,F    ;Increment Read pointer
+                      00379         movlw   UARTINT_TX_BUFFER_SIZE  ;If read pointer has reached the maximum
+                      00380         xorwf   vUARTIntTxBufRdPtr,W    ;value then reset it for roll-over
+                      00381         btfsc   STATUS,Z
+                      00382         clrf    vUARTIntTxBufRdPtr      
+                      00383 
+                      00384         movf    INDF,W
+                      00385         banksel TXREG           ;Transmit Next Data
+                      00386         movwf   TXREG
+                      00387 
+                      00388 #endif
+                      00389 
+                      00390 
+0018                  00391 ChkReceiver
+                      00392  #ifdef  UARTINT_RXON
+                      00393         banksel PIE1
+                      00394         btfss   PIE1,RCIE       ;Check for Receive Interrupt
+                      00395         goto    EndISR          ;Some other interrupt, exit
+                      00396         
+                      00397         banksel PIR1
+                      00398         btfss   PIR1,RCIF       ;Check for Receive Interrupt
+                      00399         goto    EndISR          ;Some other interrupt, exit
+                      00400 
+                      00401 ;Not required as read from RCREG will clear it
+                      00402 ;        bcf     PIR1,RCIF       ;Clear Receive Interrupt
+                      00403 
+                      00404         banksel RCREG
+                      00405         movf    RCREG,W         ;Read RCREG data to clear the interrupt
+MPASM  5.06                       16UARTI.ASM   2-18-2018  18:30:20         PAGE  9
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00406         banksel temp1   
+                      00407         movwf   temp1
+                      00408 
+                      00409         banksel RCSTA
+                      00410         movlw   06h             ;Mask out unwanted bits
+                      00411         andwf   RCSTA,W         ;Check for errors
+                      00412         btfss   STATUS,Z
+                      00413         goto    RcvError        ;Found error, flag it
+                      00414 
+                      00415         banksel vUARTIntStatus     ;
+                      00416         btfsc   vUARTIntStatus,UARTIntRxBufOF  ;Check for UARTIntRxBufOF bit
+                      00417         goto    EndISR          ;If buffer Full then return
+                      00418 
+                      00419         btfss   vUARTIntStatus,UARTIntRxBufFul    ;Check for UARTIntRxBufFul bit
+                      00420         goto    AppendRxBuffer   ;if Buffer Full then set Rx Buffer
+                      00421         bsf     vUARTIntStatus,UARTIntRxBufOF  ;Over Flow flag to indicate that
+                      00422         goto    EndISR           ;data is missed.
+                      00423 
+                      00424 
+                      00425 AppendRxBuffer
+                      00426         banksel vUARTIntRxBufDataCnt
+                      00427         bankisel vUARTIntRxBuffer       ;The UDATA segments ensures that whole
+                      00428         movf    vUARTIntRxBufWrPtr,W    ;buffer will be in one bank. Therefore
+                      00429         addlw   low(vUARTIntRxBuffer)   ;setting IRP bit based on buffer
+                      00430                                         ;start address is OK     
+                      00431         movwf   FSR                     ;Point FSR to Wrtie location
+                      00432         incf    vUARTIntRxBufWrPtr,F    ;Increment Write pointer
+                      00433         movlw   UARTINT_RX_BUFFER_SIZE  ;If Write pointer has reached the maximum
+                      00434         xorwf   vUARTIntRxBufWrPtr,W    ;value then reset it for roll-over
+                      00435         btfsc   STATUS,Z
+                      00436         clrf    vUARTIntRxBufWrPtr      
+                      00437 
+                      00438         bcf     vUARTIntStatus, UARTIntRxBufEmpty
+                      00439         incf    vUARTIntRxBufDataCnt,F  ;Decrement vUARTIntRxBuffer data size
+                      00440         movlw   UARTINT_RX_BUFFER_SIZE  ;If Buffer has reached the maximum
+                      00441         xorwf   vUARTIntRxBufDataCnt,W  ;value then set the falg for full
+                      00442         btfsc   STATUS,Z
+                      00443                 bsf     vUARTIntStatus,UARTIntRxBufFul    ;in vUARTIntStatus
+                      00444                 ;goto    RxBufFull
+                      00445 
+                      00446         movf    temp1,W
+                      00447         movwf   INDF                    ;Copy the data into FIFO buffer
+                      00448         goto    EndISR
+                      00449 
+                      00450 ; Corrigido por Hernandi em 21-01-2010
+                      00451 ; se CARACTERE recebido for o ultimo q cabe, o buffer nao pode ficar FULL
+                      00452 ; e sair, precisa armazenar este ultimo dado
+                      00453 RxBufFull
+                      00454         ;bsf     vUARTIntStatus,UARTIntRxBufFul    ;in vUARTIntStatus
+                      00455         ;goto    EndISR
+                      00456                 ;goto 
+                      00457 
+                      00458 
+MPASM  5.06                       16UARTI.ASM   2-18-2018  18:30:20         PAGE 10
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00459 RcvError
+                      00460         banksel RCSTA          
+                      00461         bcf     RCSTA,CREN      ;Clear reciever status
+                      00462         bsf     RCSTA,CREN
+                      00463         banksel vUARTIntStatus
+                      00464         bsf     vUARTIntStatus,UARTIntRxError ;Set Data Error flag
+                      00465 #endif
+                      00466 
+                      00467 
+0018                  00468 EndISR
+Error[113]  : Symbol not previously defined (ISR_FSR0L)
+0018   1283 1303      00469         banksel ISR_FSR0L
+Error[113]  : Symbol not previously defined (ISR_FSR0L)
+001A   0800           00470         movf    ISR_FSR0L,W
+Error[113]  : Symbol not previously defined (FSR)
+001B   0080           00471         movwf   FSR             ;Restore FSR
+                      00472 
+001C   0008           00473         return
+                      00474 
+                      00475 
+                      00476 
+Error[129]  : Expected (END)
+MPASM  5.06                       16UARTI.ASM   2-18-2018  18:30:20         PAGE 11
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+ChkReceiver                       00000018
+EndISR                            00000018
+UARTIntISR                        00000010
+UARTIntInit                       00000000
+__16F877A                         00000001
+
+Errors   :    23
+Warnings :     0 reported,     0 suppressed
+Messages :     0 reported,     0 suppressed
+
+

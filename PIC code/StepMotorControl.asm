@@ -67,7 +67,7 @@
 ;		'S' - STATUS geral dos contadores XYZ, CONTADOR, TIMERINT 
 ;		Retorna uma string contendo o status processado eo caractere final 'K' finalizando transmissao
 ;
-		's' - status do buffer de entrada retorna 3 bytes com o status do PLOTTER e do FIFO e 'K'
+;		's' - status do buffer de entrada retorna 3 bytes com o status do PLOTTER e do FIFO e 'K'
 ;			Formato dos status é byte PLOTTER e byte FIFO
 ;		Retorna 3 bytes, sendo 2 STATUS e 1 de finalização de envio dados 'K'
 ;
@@ -103,7 +103,7 @@
 	list p=16f877A
 
 	#include <p16f877a.inc>
-	#include "UART/UARTInt.inc"
+	#include "UARTInt.inc"
 
 #define XTAL .20 ; clock frequency (MHz)
 #define BRATE .150; Te = 1000 (us)
@@ -439,7 +439,7 @@ fimLed3
 	goto 	TransferRecdDataToExec		; Exitem dados pendentes
 	
 	bsf     vFIFOStatus,FIFOBufEmptyBit   	; Nao existem dados pendentes
-	goto ExitInt				; encerra INT
+	goto ExitInt						; encerra INT
 
 TransferRecdDataToExec	; transfere os 15 bytes de dados a partir do endereço informado por
 	bankisel vFIFOBuffer	; vFIFORdPtr
@@ -447,7 +447,7 @@ TransferRecdDataToExec	; transfere os 15 bytes de dados a partir do endereço inf
 	addlw low(vFIFOBuffer)
 	movwf FSR
 
-	banksel cANGX			; move os proximos 15 bytes 
+	banksel cANGX		; move os proximos 15 bytes 
 	movf INDF,W			; 	do FIFO para a area de desenho 
 	movwf cANGX			; 	executado apenas quando vai
 	incf FSR,F			; 	carregar linha
@@ -658,8 +658,7 @@ proxY
 		
 		banksel PORTA
 		bsf PORTA,0x3 ; 
-
-	proxZ
+proxZ
 
 ; decrementa contador de ticks
 	banksel nPassos
@@ -736,7 +735,7 @@ NEXTBYTE_BANK2	clrf INDF
 
 	; Inicializa portas
 	banksel TRISA ;bsf STATUS,RP0 ; bank 1
-	MESSG "877 PORTA como saidas"
+	; MESG "877 PORTA como saidas"
 	movlw 0x6
 	movwf ADCON1 ; desabilita conversor AD para porta A e E
 
@@ -1082,11 +1081,11 @@ LINHA
 	clrf vFIFOWrPtr	; sim, zera ponteiro escrita
 
 	btfsc vFIFOStatus,FIFOBufFulBit	; Já estava cheio?
-	goto rFIFOBufFull		; buffer cheio, ativa OVERFLOW e
-					; evita que Cnt ultrapasse limite contagem
+	goto rFIFOBufFull	; buffer cheio, ativa OVERFLOW e
+						; evita que Cnt ultrapasse limite contagem
 	
 	bcf vFIFOStatus, FIFOBufEmptyBit	; buffer nao está mais vazio
-	incf vFIFODataCnt,F			; numero de bytes chegou ao limite? ativa flag de FIFOBufFulBit
+	incf vFIFODataCnt,F	; numero de bytes chegou ao limite? ativa flag de FIFOBufFulBit
 	movlw FIFO_N_REG
 	xorwf vFIFODataCnt,W
 	btfsc STATUS,Z
@@ -1095,7 +1094,7 @@ LINHA
 	goto rFIFOContinue
 
 rFIFOBufFull
-	bsf vFIFOStatus,FIFOBufOFBit			; marca o Overflow do buffer!, dados sobre escritos
+	bsf vFIFOStatus,FIFOBufOFBit		; marca o Overflow do buffer!, dados sobre escritos
 	; nao incrementa FIFO ;incf vFIFODataCnt	; numero de bytes chegou ao limite? ativa flag de FIFOBufFulBit
 	bcf vFIFOStatus, FIFOBufEmptyBit
 
@@ -2111,14 +2110,14 @@ tglOnLineStatus
 	incf debOnLine,F
 	movlw TIME2DEBOUNCE
 	xorwf debOnLine,W
-	btfss STATUS,Z # contador debounce igual a contador tecla?
-	goto FimKeyScan # nao, então muda estado de online status
+	btfss STATUS,Z ; contador debounce igual a contador tecla?
+	goto FimKeyScan ; nao, então muda estado de online status
 
-	#sim, limpa debunce e muda estado
+	;sim, limpa debunce e muda estado
 	clrf debOnLine ; zera reg debounce
 	banksel vPLOTStatus	; ENTAO alterna LED e status
 	movlw .1 << PLOTOnLineBit
-	xorwf vPLOTStatus, F # está errado, deve FIXAR em 1 neste caso
+	xorwf vPLOTStatus, F ; está errado, deve FIXAR em 1 neste caso
 	goto FimKeyScan
 
 ;*******

@@ -1,0 +1,12 @@
+Message[302] C:\USERS\HERNANDI\DOCUMENTS\WORK\MICROSTEP-CONTROLLER\PIC CODE\STEPMOTORCONTROL.ASM 740 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] C:\USERS\HERNANDI\DOCUMENTS\WORK\MICROSTEP-CONTROLLER\PIC CODE\STEPMOTORCONTROL.ASM 742 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] C:\USERS\HERNANDI\DOCUMENTS\WORK\MICROSTEP-CONTROLLER\PIC CODE\STEPMOTORCONTROL.ASM 745 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] C:\USERS\HERNANDI\DOCUMENTS\WORK\MICROSTEP-CONTROLLER\PIC CODE\STEPMOTORCONTROL.ASM 748 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] C:\USERS\HERNANDI\DOCUMENTS\WORK\MICROSTEP-CONTROLLER\PIC CODE\STEPMOTORCONTROL.ASM 751 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] C:\USERS\HERNANDI\DOCUMENTS\WORK\MICROSTEP-CONTROLLER\PIC CODE\STEPMOTORCONTROL.ASM 754 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] C:\USERS\HERNANDI\DOCUMENTS\WORK\MICROSTEP-CONTROLLER\PIC CODE\STEPMOTORCONTROL.ASM 759 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] C:\USERS\HERNANDI\DOCUMENTS\WORK\MICROSTEP-CONTROLLER\PIC CODE\STEPMOTORCONTROL.ASM 773 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] C:\USERS\HERNANDI\DOCUMENTS\WORK\MICROSTEP-CONTROLLER\PIC CODE\STEPMOTORCONTROL.ASM 2023 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] C:\USERS\HERNANDI\DOCUMENTS\WORK\MICROSTEP-CONTROLLER\PIC CODE\STEPMOTORCONTROL.ASM 2024 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] C:\USERS\HERNANDI\DOCUMENTS\WORK\MICROSTEP-CONTROLLER\PIC CODE\STEPMOTORCONTROL.ASM 2028 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Warning[205] C:\USERS\HERNANDI\DOCUMENTS\WORK\MICROSTEP-CONTROLLER\PIC CODE\STEPMOTORCONTROL.ASM 2376 : Found directive in column 1. (end)
