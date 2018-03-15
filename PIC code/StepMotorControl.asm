@@ -147,14 +147,14 @@ PORTADIRECAO equ PORTE ; alinhar porta
 ;		BIT6 - Tx SERIAL
 ;		BIT7 - Rx SERIAL
 
-; PORTD BIT0 - Todas configuradas como entradas
-;		BIT1 - 
-;		BIT2 - 
-;		BIT3 - 
-;		BIT4 - 
-;		BIT5 - 
-;		BIT6 - 
-;		BIT7 - 
+; PORTD BIT0 - entrada digital
+;		BIT1 - entrada digital
+;		BIT2 - entrada digital
+;		BIT3 - entrada digital
+;		BIT4 - Saida digital
+;		BIT5 - Saida digital
+;		BIT6 - Saida digital
+;		BIT7 - Saida digital
 
 ; PORTE	BIT0 - 
 ;		BIT1 - 
@@ -169,26 +169,26 @@ VARIAVEL_TIMER_VAL res 01
 ; Funcao Processa os Passo
 ; Dados Entrada
 ; w deve conter a direcao a moverse
-ppMotor res 01	; posicao do ultimo passo
+ppMotor 	res 01	; posicao do ultimo passo
 ; Retornados ; devem ser enviados pela rotina local os dados!!!
 ; para LM18xxx
-Ibobina res 01 ; corrente da bobina???
-direcao res 01	; direção a andar
+Ibobina 	res 01 ; corrente da bobina???
+direcao 	res 01	; direção a andar
 
 ;*****************************************
 ; Utilizado nas rotinas das tabelas na busca dos dados
-motorWTmp res 01
+motorWTmp 	res 01
 ; Ponteiro para captura de passo das tabelas para cada motor
-MOTORX res 01
-MOTORY res 01
-MOTORZ res 01
+MOTORX 		res 01
+MOTORY		res 01
+MOTORZ 		res 01
 
 ;*****************************************
 ; status do buffer de linha
-vPLOTStatus res 01;
+vPLOTStatus 	res 01;
 
-PLOTDrawingBit equ 0x0
-PLOTOnLineBit equ 0x1
+PLOTDrawingBit 	equ 0x0
+PLOTOnLineBit 	equ 0x1
 
 ; cANG possui o coeficiente angular a ser incrementado a cada eixo em cada passagem
 ; CONTADOR cada eixo  para registar o movimento dos eixos, fixed math
@@ -276,7 +276,6 @@ vFIFODataCnt 	res .01
 vFIFOWrPtr 		res .01
 vFIFORdPtr 		res .01
 
-
 ;************************************
 ; Váriaveis de controle dos servos
 vServoClockCnt 	res 01	; contador continuo - reiniciando ao alcançar SERVO_MAX_CNT
@@ -299,7 +298,11 @@ vADCWrPtr 	res .01
 vADCRdPtr 	res .01
 vADCDataCnt res .01
 vADCStatus 	res .01
-adcBuffer 	res .80
+adcBuffer 	res .10
+
+;*************************************
+; Area memoria para rotina de controle de pinos
+vSetaBitAddress res .01
 
 ;*************************************
 ; AREA MEMORIA COMPARTILHADA
@@ -747,7 +750,7 @@ NEXTBYTE_BANK2	clrf INDF
 	movlw b'10000000' 		; porta C como saidas
 	movwf TRISC
 
-	movlw b'11111111' 		; porta D como entradas
+	movlw b'00001111' 		; porta D
 	movwf TRISD
 
 	movlw b'00000000'		; porta E como saidas
@@ -811,8 +814,8 @@ Loop	; Loop principal do programa
 	pagesel KeyScan
 	call KeyScan
 
-	pagesel ExecBehavior
-	call ExecBehavior
+	;pagesel ExecBehavior
+	;call ExecBehavior
 
 	pagesel Loop
 	banksel vUARTIntRxBufDataCnt	; verifica se tem dados a serem processados
@@ -825,6 +828,7 @@ Loop	; Loop principal do programa
 	banksel RXByte
 	movwf RXByte
 
+	Je 'M', RXByte, SETAIOPIN
 	Je 's', RXByte, STATUS_SIMPLES
 	Je 'l', RXByte, LINHA_SIMPLES
 	Je 'L', RXByte, LINHA
@@ -2103,7 +2107,7 @@ KeyScan	; todas as portas estao no primeiro banco
 	call actRight
 
 FimKeyScan
-	return;
+	return
 
 tglOnLineStatus
 	banksel debOnLine
@@ -2246,7 +2250,7 @@ ExecBehavior
 	call actRight
 	; não ocorreu nada
 
-	return
+	goto Loop
 
 ;*****************************************
 ; ROTINA DE GERAÇÂO DE SINAIS PWM
@@ -2256,7 +2260,7 @@ ExecBehavior
 
 SERVO_MAX_CNT equ .100
 
-#define BIT_SERVO1 PORTA,0x4
+#define BIT_SERVO1 PORTE,0x0
 #define BIT_SERVO2 PORTA,0x5
 #define BIT_SERVO3 PORTB,0x1
 #define BIT_SERVO4 PORTB,0x2
@@ -2278,7 +2282,7 @@ processaPWMFunc
 procPWM_SETA_ALL
 	clrf vServoClockCnt	; zera contador
 	banksel PORTA
-	bsf BIT_SERVO1 
+	bsf BIT_SERVO1
 	bsf BIT_SERVO2
 	bsf BIT_SERVO3
 	bsf BIT_SERVO4
@@ -2353,6 +2357,94 @@ desligaMotoresFunc
 	pagesel desligaMotoresFunc
 	
 	return
+
+;*****************************************
+; ROTINA PARA CONTROLAR UM PINO DE IO
+; pega byte da serial e seta de pin e estado
+;*****************************************
+
+#define BIT_IO1 PORTD,0x4
+#define BIT_IO2 PORTD,0x5
+#define BIT_IO3 PORTD,0x6
+#define BIT_IO4 PORTD,0x7
+
+SETAIOPIN
+	call WaitRxData
+	; sublw '0' ; byte
+	banksel vSetaBitAddress
+	movwf vSetaBitAddress
+
+	xorlw '0'
+	btfsc STATUS, Z
+	goto SETA_BIT_1
+
+	movfw vSetaBitAddress
+	xorlw '1'
+	btfsc STATUS, Z
+	goto SETA_BIT_2
+
+	movfw vSetaBitAddress
+	xorlw '2'
+	btfsc STATUS, Z
+	goto SETA_BIT_3
+
+	movfw vSetaBitAddress
+	xorlw '3'
+	btfsc STATUS, Z
+	goto SETA_BIT_4
+
+	goto Loop
+
+SETA_BIT_1
+	call WaitRxData
+	xorlw '0'
+	banksel PORTD
+	btfsc STATUS, Z
+	; seta 0
+	bcf BIT_IO1
+	btfss STATUS, Z
+	; seta 1
+	bsf BIT_IO1
+	goto SETA_BIT_FIM
+
+SETA_BIT_2
+	call WaitRxData
+	xorlw '0'
+	banksel PORTD
+	btfsc STATUS, Z
+	; seta 0
+	bcf BIT_IO2
+	btfss STATUS, Z
+	; seta 1
+	bsf BIT_IO2
+	goto SETA_BIT_FIM
+
+SETA_BIT_3
+	call WaitRxData
+	xorlw '0'
+	banksel PORTD
+	btfsc STATUS, Z
+	; seta 0
+	bcf BIT_IO3
+	btfss STATUS, Z
+	; seta 1
+	bsf BIT_IO3
+	goto SETA_BIT_FIM
+
+SETA_BIT_4
+	call WaitRxData
+	xorlw '0'
+	banksel PORTD
+	btfsc STATUS, Z
+	; seta 0
+	bcf BIT_IO4
+	btfss STATUS, Z
+	; seta 1
+	bsf BIT_IO4
+
+SETA_BIT_FIM
+	pagesel Loop
+	goto Loop
 
 ;********************************************
 ; Rotina de captura de dados do ADC
