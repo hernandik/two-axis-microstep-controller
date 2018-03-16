@@ -813,6 +813,7 @@ Loop	; Loop principal do programa
 	; verifica estado das chaves externas
 	pagesel KeyScan
 	call KeyScan
+	pagesel Loop
 
 	;pagesel ExecBehavior
 	;call ExecBehavior
@@ -828,6 +829,9 @@ Loop	; Loop principal do programa
 	banksel RXByte
 	movwf RXByte
 
+	Je '\n', RXByte, IGNORE_CHAR
+	Je '\r', RXByte, IGNORE_CHAR
+	Je ' ', RXByte, IGNORE_CHAR
 	Je 'M', RXByte, SETAIOPIN
 	Je 's', RXByte, STATUS_SIMPLES
 	Je 'l', RXByte, LINHA_SIMPLES
@@ -840,6 +844,9 @@ Loop	; Loop principal do programa
 	Je 'B', RXByte, SETABEHAVIOR
 
 	goto DADOINVALIDO
+
+IGNORE_CHAR
+	goto Loop
 
 ;********************************************
 ; Seta variaveis de comportamento
@@ -2369,7 +2376,9 @@ desligaMotoresFunc
 #define BIT_IO4 PORTD,0x7
 
 SETAIOPIN
+	pagesel WaitRxData
 	call WaitRxData
+	pagesel SETAIOPIN
 	; sublw '0' ; byte
 	banksel vSetaBitAddress
 	movwf vSetaBitAddress
@@ -2392,11 +2401,14 @@ SETAIOPIN
 	xorlw '3'
 	btfsc STATUS, Z
 	goto SETA_BIT_4
-
-	goto Loop
+	
+	goto SETA_BIT_FIM
 
 SETA_BIT_1
+	pagesel WaitRxData
 	call WaitRxData
+	pagesel SETAIOPIN
+
 	xorlw '0'
 	banksel PORTD
 	btfsc STATUS, Z
@@ -2408,7 +2420,9 @@ SETA_BIT_1
 	goto SETA_BIT_FIM
 
 SETA_BIT_2
+	pagesel WaitRxData
 	call WaitRxData
+	pagesel SETAIOPIN
 	xorlw '0'
 	banksel PORTD
 	btfsc STATUS, Z
@@ -2420,7 +2434,9 @@ SETA_BIT_2
 	goto SETA_BIT_FIM
 
 SETA_BIT_3
+	pagesel WaitRxData
 	call WaitRxData
+	pagesel SETAIOPIN
 	xorlw '0'
 	banksel PORTD
 	btfsc STATUS, Z
@@ -2432,7 +2448,9 @@ SETA_BIT_3
 	goto SETA_BIT_FIM
 
 SETA_BIT_4
+	pagesel WaitRxData
 	call WaitRxData
+	pagesel SETAIOPIN
 	xorlw '0'
 	banksel PORTD
 	btfsc STATUS, Z
