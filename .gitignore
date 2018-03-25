@@ -4,6 +4,7 @@
 PIC\ code/controle-motor.X/
 private-files/
 log.txt
+PIC_CODE/
 *.dll
 # User-specific files
 *.exe

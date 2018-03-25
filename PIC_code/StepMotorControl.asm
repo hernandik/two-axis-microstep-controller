@@ -102,8 +102,8 @@
 ;***************************************************************************************
 	list p=16f877A
 
-	#include <p16f877a.inc>
-	#include "UARTInt.inc"
+#include <p16f877a.inc>
+#include "UARTInt.inc"
 
 #define XTAL .20 ; clock frequency (MHz)
 #define BRATE .150; Te = 1000 (us)
@@ -1125,6 +1125,7 @@ ALTERA_TIMER_VAL
 	goto Loop
 
 DADOINVALIDO
+	call PutChar
 	call PutERRO
 	movlw ENDLINE ;0x0d ; nova linha
 	call PutChar
