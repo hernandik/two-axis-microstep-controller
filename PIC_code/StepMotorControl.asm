@@ -871,7 +871,9 @@ SETABEHAVIOR
 
 ;********************************************
 DESLIGAMOTORES
+	pagesel desligaMotoresFunc
 	call desligaMotoresFunc
+	pagesel PutOK
 	call PutOK
 	goto Loop
 
@@ -1978,8 +1980,10 @@ TAB4	retlw 0x1
 ; sLOW e sHIGH contem dados a enviar - primeiros 6 bits são enviados para cada motor
 ; ROTINA LENTA - OTIMIZAR UTILIZANDO TIMER2 e MODULO SPI
 serializar
-	movwf FSR	
+	movwf FSR
 	movlw .6
+	bcf STATUS, 0x7
+	banksel serCount
 	movwf serCount ; 6 bits iniciais
 
 serProximoBit1
@@ -2350,20 +2354,18 @@ desligaMotoresFunc
 	movlw PORTA
 	pagesel serializar
 	call serializar
-
-	banksel PORTA
-	bsf PORTA,0x3 ; bit controle
 	pagesel desligaMotoresFunc
 
 	banksel PORTA
+	bsf PORTA,0x3 ; bit controle
+
 	bcf PORTA,0x2 ; bit controle
 	movlw PORTA
 	pagesel serializar
 	call serializar
-	banksel PORTA
-	bsf PORTA,0x3 ; bit controle
 	pagesel desligaMotoresFunc
-	
+	banksel PORTA
+	bsf PORTA,0x2 ; bit controle
 	return
 
 ;*****************************************
