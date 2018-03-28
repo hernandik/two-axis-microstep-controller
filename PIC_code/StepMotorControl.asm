@@ -1687,14 +1687,14 @@ tabLB1946a
 	btfsc STATUS,C                ;then increment PCLATH. Then load the
 	incf PCLATH,f                 ;program counter with computed goto.
 	movwf PCL
-TAB1946A	retlw 0xf0		; 00EP 3210 bits a enviar para sistema sa invertidos no segundo nible
-	RETLW 0xd0				;0.924	; dados para 4 micosteps adicionais
-	retlw 0x80
-	RETLW 0x40 ;0.383
-	retlw 0x04
-	RETLW 0x44 ;0.383
-	retlw 0x84
-	RETLW 0xd4 ;0.924
+TAB1946A	retlw 0xf0	; 1111 0000	; 00EP 3210 bits a enviar para sistema sa invertidos no segundo nible
+	RETLW 0xd0			; 1101 0000	;0.924	; dados para 4 micosteps adicionais
+	retlw 0x80          ; 1000 0000
+	RETLW 0x40 ;0.383   ; 0100 0000
+	retlw 0x04          ; 0000 0100
+	RETLW 0x44 ;0.383   ; 0100 0100
+	retlw 0x84          ; 1000 0100
+	RETLW 0xd4 ;0.924	; 1101 0100
 	retlw 0xf4
 	RETLW 0xd4 ;0.924
 	retlw 0x84
@@ -1979,6 +1979,9 @@ TAB4	retlw 0x1
 ; 	o bit de seleção já deve ter previamente setado pela rotina que chamou
 ; sLOW e sHIGH contem dados a enviar - primeiros 6 bits são enviados para cada motor
 ; ROTINA LENTA - OTIMIZAR UTILIZANDO TIMER2 e MODULO SPI
+#define SERIALIZE_CLOCK_PIN  INDF, 0x0
+#define SERIALIZE_DATA_PIN  INDF, 0x1
+
 serializar
 	movwf FSR
 	movlw .6
@@ -1987,16 +1990,16 @@ serializar
 	movwf serCount ; 6 bits iniciais
 
 serProximoBit1
-	bcf INDF,0x0 ;clock LOW
+	bcf SERIALIZE_CLOCK_PIN ;clock LOW
 	rlf sLOW,F
 	btfss STATUS, C
 	goto ser1
-	bsf INDF,0x1
+	bsf SERIALIZE_DATA_PIN
 	goto serE
 ser1
-	bcf INDF,0x1
+	bcf SERIALIZE_DATA_PIN
 serE
-	bsf INDF,0x0 ; transicao clock HIGH
+	bsf SERIALIZE_CLOCK_PIN ; transicao clock HIGH
 
 	; verifica se já é o bit 6
 	decf serCount,F
@@ -2010,24 +2013,24 @@ serNextByte
 	movwf serCount
 
 serProximoBit2
-	bcf INDF,0x0 ;clock LOW
+	bcf SERIALIZE_CLOCK_PIN ;clock LOW
 	rlf sHIGH,F
 	btfss STATUS, C
 	goto ser2
-	bsf INDF,0x1
+	bsf SERIALIZE_DATA_PIN
 	goto serE2
 ser2
-	bcf INDF,0x1
+	bcf SERIALIZE_DATA_PIN
 serE2
-	bsf INDF,0x0 ; transicao clock HIGH
+	bsf SERIALIZE_CLOCK_PIN ; transicao clock HIGH
 
 	decf serCount,F ; proximo bit
 	; verifica se já é o bit 6
 	btfss STATUS,Z
 	goto serProximoBit2
 	; termina rotina serialização
-	bcf INDF,0x1
-	bcf INDF,0x0
+	bcf SERIALIZE_DATA_PIN
+	bcf ISERIALIZE_CLOCK_PIN
 	return ; TERMINA
 
 
